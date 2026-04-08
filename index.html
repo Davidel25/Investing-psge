@@ -311,21 +311,29 @@ async function fmpFetch(fullUrl) {
 }
 
 async function fetchAllData(ticker) {
-  var base = "https://financialmodelingprep.com/api/v3";
+  /*
+   * NEW STABLE ENDPOINTS (post August 2025)
+   * Base: https://financialmodelingprep.com/stable/
+   * All use ?symbol=TICKER&apikey=KEY format
+   * Legacy /api/v3/ routes are blocked for new accounts.
+   */
+  var stable = "https://financialmodelingprep.com/stable";
   var key = getActiveFmpKey();
 
   console.log("=== FMP Config ===");
+  console.log("  Base URL: /stable/ (non-legacy)");
   console.log("  Active key:", key.substring(0, 4) + "****" + key.substring(key.length - 4));
   console.log("  Key length:", key.length);
   console.log("  Key source:", (localStorage.getItem("fundavest_fmpkey") || "").trim() ? "CUSTOM (LocalStorage)" : "DEFAULT (hardcoded)");
 
   var urls = {
-    quote:     base + "/quote/"               + ticker + "?apikey=" + key,
-    metrics:   base + "/key-metrics-ttm/"      + ticker + "?apikey=" + key,
-    growth:    base + "/financial-growth/"      + ticker + "?limit=1&apikey=" + key,
-    dcf:       base + "/discounted-cash-flow/"  + ticker + "?apikey=" + key,
-    cashflow:  base + "/cash-flow-statement/"   + ticker + "?limit=1&apikey=" + key,
-    earnings:  base + "/earning_calendar"                + "?symbol=" + ticker + "&apikey=" + key
+    quote:     stable + "/quote?symbol="                    + ticker + "&apikey=" + key,
+    metrics:   stable + "/key-metrics-ttm?symbol="          + ticker + "&apikey=" + key,
+    growth:    stable + "/financial-statement-growth?symbol=" + ticker + "&limit=1&apikey=" + key,
+    dcf:       stable + "/dcf?symbol="                      + ticker + "&apikey=" + key,
+    cashflow:  stable + "/cash-flow-statement?symbol="      + ticker + "&limit=1&apikey=" + key,
+    earnings:  stable + "/earnings-calendar?symbol="        + ticker + "&apikey=" + key,
+    profile:   stable + "/profile?symbol="                  + ticker + "&apikey=" + key
   };
 
   console.log("=== FMP URLs for " + ticker + " ===");
@@ -348,15 +356,29 @@ async function fetchAllData(ticker) {
     safe("growth", urls.growth),
     safe("dcf", urls.dcf),
     safe("cashflow", urls.cashflow),
-    safe("earnings", urls.earnings)
+    safe("earnings", urls.earnings),
+    safe("profile", urls.profile)
   ]);
 
+  /* Stable endpoints may return arrays or objects — normalize */
+  function first(r) {
+    if (!r) return {};
+    if (Array.isArray(r)) return r[0] || {};
+    return r;
+  }
+
+  var profile = first(results[6]);
+  var quoteData = first(results[0]);
+
+  /* Merge profile data into quote for beta, marketCap, name etc. */
+  var mergedQuote = Object.assign({}, profile, quoteData);
+
   var out = {
-    quote:    results[0] && results[0][0] ? results[0][0] : {},
-    metrics:  results[1] && results[1][0] ? results[1][0] : {},
-    growth:   results[2] && results[2][0] ? results[2][0] : {},
-    dcf:      results[3] && results[3][0] ? results[3][0] : {},
-    cashflow: results[4] && results[4][0] ? results[4][0] : {},
+    quote:    mergedQuote,
+    metrics:  first(results[1]),
+    growth:   first(results[2]),
+    dcf:      first(results[3]),
+    cashflow: first(results[4]),
     earnings: Array.isArray(results[5]) ? results[5] : []
   };
 
