@@ -50,44 +50,115 @@
 </header>
 
 <main class="max-w-7xl mx-auto px-4 py-8">
-    <section class="mb-10">
+    <section class="mb-10 text-center">
         <div class="flex gap-2">
-            <input id="tickerInput" type="text" placeholder="הכנס סימול (למשל: MSFT)" class="flex-1 text-xl font-m uppercase" />
-            <button onclick="analyzeStock()" class="btn btn-gold px-10">נתח מניה</button>
+            <input id="tickerInput" type="text" placeholder="הכנס סימול (MSFT, SABR)" class="flex-1 text-xl font-m uppercase" onkeydown="if(event.key==='Enter') analyzeStock()"/>
+            <button onclick="analyzeStock()" class="btn btn-gold px-10 font-bold">נתח מניה</button>
         </div>
     </section>
 
-    <div id="loading" class="hidden flex-col items-center py-20">
+    <div id="loading" class="hidden flex flex-col items-center py-20">
         <div class="spinner mb-4"></div>
-        <p id="loadingMsg">שואב נתונים מ-Alpha Vantage...</p>
+        <p id="loadingMsg" class="text-gold animate-pulse">טוען...</p>
     </div>
 
     <div id="results" class="hidden space-y-6">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="card flex flex-col items-center justify-center text-center">
                 <div class="score-ring">
-                    <svg viewBox="0 0 220 220"><circle class="bg-c" cx="110" cy="110" r="96"/><circle id="scoreCircle" class="fg-c" cx="110" cy="110" r="96" stroke-dasharray="603.19" stroke-dashoffset="603.19" stroke="#22c55e"/></svg>
+                    <svg viewBox="0 0 220 220"><circle class="bg-c" cx="110" cy="110" r="96"/><circle id="scoreCircle" class="fg-c" cx="110" cy="110" r="96" stroke-dasharray="603.19" stroke-dashoffset="603.19"/></svg>
                     <div class="score-value"><span id="scoreNum" class="score-number">0</span></div>
                 </div>
                 <div id="buyStatus" class="mt-4"></div>
             </div>
-
             <div class="card lg:col-span-2">
                 <div class="flex justify-between border-b border-gray-800 pb-4 mb-4">
                     <div><h2 id="compName" class="text-3xl font-bold font-d">---</h2><p id="compTicker" class="text-gold font-m">---</p></div>
                     <div class="text-right"><p id="compPrice" class="text-3xl font-bold font-m">---</p></div>
                 </div>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div><p class="metric-label">P/E</p><p id="valPe" class="metric-value">---</p></div>
-                    <div><p class="metric-label">PEG</p><p id="valPeg" class="metric-value">---</p></div>
-                    <div><p class="metric-label">ROE</p><p id="valRoe" class="metric-value">---</p></div>
-                    <div><p class="metric-label">Dividend</p><p id="valDiv" class="metric-value">---</p></div>
-                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="metricsGrid">
+                    </div>
             </div>
         </div>
-
         <div class="card border-gold/30">
-            <h3 class="text-gold font-bold mb-4 flex items-center gap-2"><span>🤖</span> ניתוח AI פונדמנטלי</h3>
-            <div id="aiSummary" class="text-gray-300 leading-relaxed italic border-b border-gray-800 pb-4 mb-4"></div>
-            <div class="grid md:grid-cols-2 gap-6">
-                <div><h4 class="text-grn text-sm font-bold mb-2">חוזקות</h4><ul id="
+            <h3 class="text-gold font-bold mb-4">🤖 ניתוח AI</h3>
+            <div id="aiSummary" class="text-gray-200 mb-6"></div>
+        </div>
+    </div>
+</main>
+
+<script>
+function saveKeys() {
+    localStorage.setItem("fv_ant", document.getElementById("anthropicKey").value);
+    localStorage.setItem("fv_av", document.getElementById("alphaVantageKey").value);
+    alert("המפתחות נשמרו בדפדפן שלך בלבד!");
+}
+
+window.onload = () => {
+    document.getElementById("anthropicKey").value = localStorage.getItem("fv_ant") || "";
+    document.getElementById("alphaVantageKey").value = localStorage.getItem("fv_av") || "";
+};
+
+async function analyzeStock() {
+    const ticker = document.getElementById("tickerInput").value.toUpperCase();
+    const antKey = localStorage.getItem("fv_ant");
+    const avKey = localStorage.getItem("fv_av");
+
+    if (!ticker || !antKey || !avKey) return alert("חסר סימול או מפתחות API");
+
+    document.getElementById("loading").classList.remove("hidden");
+    document.getElementById("results").classList.add("hidden");
+
+    try {
+        const overviewRes = await fetch(`https://www.alphavantage.co/query?function=OVERVIEW&symbol=${ticker}&apikey=${avKey}`);
+        const overview = await overviewRes.json();
+        
+        const quoteRes = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${avKey}`);
+        const quote = await quoteRes.json();
+
+        document.getElementById("compName").innerText = overview.Name;
+        document.getElementById("compTicker").innerText = overview.Symbol;
+        document.getElementById("compPrice").innerText = "$" + (quote["Global Quote"]?.["05. price"] || "0");
+
+        const ai = await callClaude(overview, quote["Global Quote"], antKey);
+        renderAI(ai);
+
+        document.getElementById("loading").classList.add("hidden");
+        document.getElementById("results").classList.remove("hidden");
+    } catch (e) {
+        alert("שגיאה: " + e.message);
+        document.getElementById("loading").classList.add("hidden");
+    }
+}
+
+async function callClaude(overview, quote, key) {
+    const prompt = `Analyze ${overview.Symbol}. P/E: ${overview.PERatio}, PEG: ${overview.PEGRatio}. Return JSON: {"score":0-100, "summary":"Hebrew analysis", "buy":true}`;
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+            "anthropic-dangerous-direct-browser-access": "true"
+        },
+        body: JSON.stringify({
+            model: "claude-3-sonnet-20240229",
+            max_tokens: 1000,
+            messages: [{role: "user", content: prompt}]
+        })
+    });
+    const json = await res.json();
+    return JSON.parse(json.content[0].text);
+}
+
+function renderAI(ai) {
+    document.getElementById("scoreNum").innerText = ai.score;
+    const offset = 603.19 - (ai.score / 100) * 603.19;
+    document.getElementById("scoreCircle").style.strokeDashoffset = offset;
+    document.getElementById("scoreCircle").style.stroke = ai.score >= 80 ? "#22c55e" : "#d4a853";
+    document.getElementById("aiSummary").innerText = ai.summary;
+    document.getElementById("buyStatus").innerHTML = ai.buy ? '<span class="buy-badge buy-yes">✓ אישור קנייה</span>' : '<span class="text-red-500">✗ המתן</span>';
+}
+</script>
+</body>
+</html>
