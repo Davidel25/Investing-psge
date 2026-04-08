@@ -316,21 +316,47 @@ function switchTab(tab, btn) {
 }
 
 async function fetchFMP(endpoint) {
-  const sep = endpoint.includes('?') ? '&' : '?';
-  const res = await fetch(FMP_BASE + endpoint + sep + 'apikey=' + FMP_KEY);
-  if (!res.ok) throw new Error('FMP API error: ' + res.status);
-  return res.json();
+  var url = FMP_BASE + endpoint;
+  if (url.includes('?')) {
+    url = url + '&apikey=' + FMP_KEY;
+  } else {
+    url = url + '?apikey=' + FMP_KEY;
+  }
+  // Debug: log URL with masked key
+  console.log('[FMP Request]', url.replace(FMP_KEY, FMP_KEY.substring(0,4) + '***'));
+  var res = await fetch(url);
+  if (!res.ok) {
+    var errBody = '';
+    try { errBody = await res.text(); } catch(e) {}
+    console.error('[FMP Error] Status:', res.status, '| URL:', url.replace(FMP_KEY, '***'), '| Body:', errBody);
+    throw new Error('FMP API error ' + res.status + ': ' + (errBody || 'Unknown'));
+  }
+  var data = await res.json();
+  console.log('[FMP Response]', endpoint.split('?')[0], '→', Array.isArray(data) ? data.length + ' items' : 'object');
+  return data;
 }
 
 async function fetchAllData(ticker) {
+  // Helper: try fetch, return fallback on error
+  async function safeFetch(endpoint, fallback) {
+    try { return await fetchFMP(endpoint); }
+    catch(e) { console.warn('[FMP] Failed:', endpoint, e.message); return fallback; }
+  }
+
   const [quote, metrics, growth, dcf, cashflow, earnings] = await Promise.all([
-    fetchFMP('/quote/' + ticker),
-    fetchFMP('/key-metrics-ttm/' + ticker),
-    fetchFMP('/financial-growth/' + ticker + '?limit=1'),
-    fetchFMP('/discounted-cash-flow/' + ticker),
-    fetchFMP('/cash-flow-statement/' + ticker + '?limit=1'),
-    fetchFMP('/earning_calendar?symbol=' + ticker),
+    safeFetch('/quote/' + ticker, []),
+    safeFetch('/key-metrics-ttm/' + ticker, []),
+    safeFetch('/financial-growth/' + ticker + '?limit=1', []),
+    safeFetch('/discounted-cash-flow/' + ticker, []),
+    safeFetch('/cash-flow-statement/' + ticker + '?limit=1', []),
+    safeFetch('/earning_calendar?symbol=' + ticker, []),
   ]);
+
+  console.log('[FMP] All data fetched for', ticker, {
+    quote: !!quote?.[0], metrics: !!metrics?.[0], growth: !!growth?.[0],
+    dcf: !!dcf?.[0], cashflow: !!cashflow?.[0], earnings: (earnings||[]).length + ' items'
+  });
+
   return { quote: quote?.[0]||{}, metrics: metrics?.[0]||{}, growth: growth?.[0]||{}, dcf: dcf?.[0]||{}, cashflow: cashflow?.[0]||{}, earnings: earnings||[] };
 }
 
