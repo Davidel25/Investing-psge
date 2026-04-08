@@ -3,108 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FundaVest Pro — ניתוח מניות AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+    <title>FundaVest Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root {
-            --s50:#0a0a0f;--s100:#12121a;--s200:#1a1a25;--s300:#222233;--s400:#2a2a3d;
-            --gold:#d4a853;--grn:#22c55e;--red:#ef4444;--txt:#e2e2e8;--txt3:#6b6b7b;
-        }
-        *{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:'IBM Plex Sans',sans-serif;background:var(--s50);color:var(--txt);min-height:100vh}
-        .score-ring{position:relative;width:200px;height:200px}
-        .score-ring svg{transform:rotate(-90deg)}
-        .score-ring circle{fill:none;stroke-width:10}
-        .score-ring .bg-c{stroke:var(--s200)}
-        .score-ring .fg-c{stroke-linecap:round;transition:stroke-dashoffset 1.5s ease-in-out}
-        .score-value{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-        .score-number{font-family:'Playfair Display',serif;font-size:3.5rem;font-weight:800;line-height:1}
-        .spinner{width:40px;height:40px;border:3px solid var(--s200);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        input{background:var(--s100);border:1px solid var(--s300);color:var(--txt);border-radius:8px;padding:10px;outline:none}
-        .btn{padding:10px 20px;border-radius:8px;font-weight:600;cursor:pointer;transition:all .2s;border:none}
-        .btn-gold{background:linear-gradient(135deg,#d4a853,#b8903f);color:#0a0a0f}
-        .card{background:var(--s100);border:1px solid var(--s200);border-radius:12px;padding:20px}
-        .metric-label{font-size:.75rem;color:var(--txt3);text-transform:uppercase}
-        .metric-value{font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:600}
-        .buy-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:20px;font-weight:700}
-        .buy-yes{background:rgba(34,197,94,0.15);color:var(--grn)}
+        :root { --gold: #d4a853; --dark: #0a0a0f; }
+        body { background-color: var(--dark); color: white; font-family: system-ui, -apple-system, sans-serif; }
+        .card { background: #12121a; border: 1px solid #222233; border-radius: 12px; padding: 20px; }
+        .btn-gold { background: linear-gradient(135deg, #d4a853, #b8903f); color: black; font-weight: bold; padding: 10px 20px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .btn-gold:hover { opacity: 0.9; transform: translateY(-1px); }
+        .spinner { width: 40px; height: 40px; border: 3px solid #222; border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
-<body>
+<body class="p-4">
 
-<header class="border-b border-gray-800 p-4 sticky top-0 bg-black/90 backdrop-blur-md z-50">
-    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
-        <div class="flex items-center gap-2">
-            <div class="bg-gold text-black px-2 py-1 rounded font-bold">FV</div>
-            <h1 class="text-gold font-bold text-lg font-d">FundaVest Pro</h1>
-        </div>
+    <header class="max-w-5xl mx-auto flex flex-wrap justify-between items-center mb-8 gap-4 border-b border-gray-800 pb-4">
+        <h1 class="text-2xl font-bold text-gold">FundaVest Pro</h1>
         <div class="flex gap-2">
-            <input id="antKey" type="password" placeholder="Anthropic API Key" class="text-xs w-32 md:w-48" />
-            <input id="avKey" type="password" placeholder="Alpha Vantage Key" class="text-xs w-32 md:w-48" />
-            <button onclick="saveSettings()" class="btn btn-gold text-xs py-1">שמור</button>
+            <input id="antKey" type="password" placeholder="Anthropic Key" class="bg-gray-900 border border-gray-700 p-2 rounded text-xs w-40">
+            <input id="avKey" type="password" placeholder="Alpha Vantage Key" class="bg-gray-900 border border-gray-700 p-2 rounded text-xs w-40">
+            <button onclick="saveKeys()" class="btn-gold text-xs">שמור</button>
         </div>
-    </div>
-</header>
+    </header>
 
-<main class="max-w-6xl mx-auto px-4 py-8">
-    <div class="flex gap-2 mb-10">
-        <input id="tickerInput" type="text" placeholder="הכנס סימול (למשל: MSFT)" class="flex-1 text-lg font-m uppercase" onkeydown="if(event.key==='Enter') startAnalysis()" />
-        <button onclick="startAnalysis()" class="btn btn-gold px-8">נתח מניה</button>
-    </div>
+    <main class="max-w-5xl mx-auto">
+        <div class="flex gap-2 mb-8">
+            <input id="tickerInput" type="text" placeholder="הכנס סימול (MSFT)" class="flex-1 bg-gray-900 border border-gray-700 p-4 rounded text-xl uppercase">
+            <button id="mainBtn" onclick="analyzeStock()" class="btn-gold text-lg px-8">נתח מניה</button>
+        </div>
 
-    <div id="loader" class="hidden flex flex-col items-center py-20">
-        <div class="spinner mb-4"></div>
-        <p id="loaderMsg" class="text-gold animate-pulse">מתחבר לבורסה...</p>
-    </div>
+        <div id="loader" class="hidden flex flex-col items-center py-10">
+            <div class="spinner mb-4"></div>
+            <p class="text-gold animate-pulse">מנתח נתונים...</p>
+        </div>
 
-    <div id="results" class="hidden space-y-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="card flex flex-col items-center justify-center">
-                <div class="score-ring">
-                    <svg viewBox="0 0 200 200"><circle class="bg-c" cx="100" cy="100" r="90"/><circle id="scoreCirc" class="fg-c" cx="100" cy="100" r="90" stroke-dasharray="565.48" stroke-dashoffset="565.48" stroke="#22c55e"/></svg>
-                    <div class="score-value"><span id="scoreVal" class="score-number">0</span></div>
+        <div id="results" class="hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="card text-center">
+                    <p class="text-gray-400 text-sm mb-2">ציון פונדמנטלי</p>
+                    <div id="scoreDisplay" class="text-6xl font-bold text-gold">0</div>
                 </div>
-                <div id="buyTag" class="mt-4"></div>
-            </div>
-            <div class="card md:col-span-2">
-                <div class="flex justify-between items-start border-b border-gray-800 pb-4 mb-4">
-                    <div><h2 id="name" class="text-2xl font-bold font-d">---</h2><p id="tick" class="text-gold font-m">---</p></div>
-                    <div class="text-right font-m text-2xl font-bold" id="price">---</div>
-                </div>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div><p class="metric-label">P/E מכפיל</p><p id="m-pe" class="metric-value">---</p></div>
-                    <div><p class="metric-label">PEG צמיחה</p><p id="m-peg" class="metric-value">---</p></div>
-                    <div><p class="metric-label">ROE תשואה</p><p id="m-roe" class="metric-value">---</p></div>
-                    <div><p class="metric-label">דיבידנד</p><p id="m-div" class="metric-value">---</p></div>
+                <div class="card md:col-span-2">
+                    <h2 id="compName" class="text-2xl font-bold mb-1">---</h2>
+                    <p id="compPrice" class="text-xl text-green-500">---</p>
                 </div>
             </div>
+            <div class="card border-gold/30">
+                <h3 class="text-gold font-bold mb-4">🤖 ניתוח AI</h3>
+                <p id="aiSummary" class="text-gray-200 leading-relaxed"></p>
+            </div>
         </div>
-        <div class="card border-gold/20">
-            <h3 class="text-gold font-bold mb-4 flex items-center gap-2"><span>🤖</span> ניתוח אנליסט AI</h3>
-            <div id="summary" class="text-gray-200 leading-relaxed bg-black/20 p-4 rounded"></div>
-        </div>
-    </div>
-</main>
+    </main>
 
-<script>
-const DEFAULT_AV = "9A72O2F5PF9CSLER";
+    <script>
+        function saveKeys() {
+            const ant = document.getElementById('antKey').value.trim();
+            const av = document.getElementById('avKey').value.trim();
+            localStorage.setItem('fv_ant', ant);
+            localStorage.setItem('fv_av', av);
+            alert("המפתחות נשמרו בהצלחה!");
+        }
 
-function saveSettings() {
-    localStorage.setItem("fv_ant_key", document.getElementById("antKey").value.trim());
-    localStorage.setItem("fv_av_key", document.getElementById("avKey").value.trim() || DEFAULT_AV);
-    alert("המפתחות נשמרו בהצלחה!");
-}
+        window.onload = () => {
+            document.getElementById('antKey').value = localStorage.getItem('fv_ant') || "";
+            document.getElementById('avKey').value = localStorage.getItem('fv_av') || "";
+        };
 
-window.onload = () => {
-    document.getElementById("antKey").value = localStorage.getItem("fv_ant_key") || "";
-    document.getElementById("avKey").value = localStorage.getItem("fv_av_key") || DEFAULT_AV;
-};
+        async function analyzeStock() {
+            const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+            const ant = localStorage.getItem('fv_ant');
+            const av = localStorage.getItem('fv_av');
 
-async function startAnalysis() {
-    const symbol = document.getElementById("tickerInput").value.trim().toUpperCase();
-    const ant = localStorage.getItem("fv_ant_key");
-    const av = localStorage.getItem("fv_av_key") || DEFAULT_AV;
+            if (!ticker || !ant || !av) {
+                alert("אנא הזן סימול וודא שהמפתחות שמורים");
+                return;
+            }
 
-    if (!symbol || !ant) return alert("אנא הזן סימול ומ
+            document.getElementById('loader').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+
+            try {
+                // נתונים מ-Alpha Vantage
+                const res = await fetch(`https://www.alphavantage.co/query?function=OVERVIEW&symbol=${ticker}&apikey=${av}`);
+                const data = await res.json();
+
+                if (data.Note) throw new Error("מגבלת API. המתן דקה.");
+                if (!data.Symbol) throw new Error("מניה לא נמצאה.");
+
+                // שליחה לקלוד
+                const ai = await callClaude(data, ant);
+                
+                // עדכון UI
+                document.getElementById('compName').innerText = data.Name;
+                document.getElementById('scoreDisplay').innerText = ai.score;
+                document.getElementById('aiSummary').innerText = ai.summary;
+                
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('results').classList.remove('hidden');
+
+            } catch (e) {
+                alert("שגיאה: " + e.message);
+                document.getElementById('loader').classList.add('hidden');
+            }
+        }
+
+        async function callClaude(overview, key) {
+            const prompt = `Analyze ${overview.Symbol}. P/E: ${overview.PERatio}. Return ONLY JSON: {"score":0-100, "summary":"Hebrew analysis"}`;
+            const res = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": key,
+                    "anthropic-version": "2023-06-01",
+                    "anthropic-dangerous-direct-browser-access": "true"
+                },
+                body: JSON.stringify({
+                    model: "claude-3-sonnet-20240229",
+                    max_tokens: 1000,
+                    messages: [{role: "user", content: prompt}]
+                })
+            });
+            const json = await res.json();
+            return JSON.parse(json.content[0].text);
+        }
+    </script>
+</body>
+</html>
