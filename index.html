@@ -61,6 +61,14 @@
   .logo-box{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--gold),#a07830);display:flex;align-items:center;justify-content:center}
   .font-d{font-family:'Playfair Display',serif}.font-m{font-family:'JetBrains Mono',monospace}
   .rate-note{background:rgba(212,168,83,.08);border:1px solid rgba(212,168,83,.15);border-radius:8px;padding:8px 14px;font-size:.78rem;color:var(--gold);text-align:center}
+  .suggest-box{position:absolute;top:100%;right:0;left:0;z-index:100;margin-top:4px;background:var(--s100);border:1px solid var(--s300);border-radius:10px;max-height:280px;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  .suggest-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;transition:background .15s;border-bottom:1px solid var(--s200)}
+  .suggest-item:last-child{border-bottom:none}
+  .suggest-item:hover,.suggest-item.active{background:var(--s200)}
+  .suggest-sym{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:1rem;color:var(--gold)}
+  .suggest-name{font-size:.8rem;color:var(--txt2);margin-right:10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .suggest-type{font-size:.65rem;color:var(--txt3);padding:2px 8px;border-radius:4px;background:var(--s200);white-space:nowrap}
+  .suggest-loading{padding:14px;text-align:center;color:var(--txt3);font-size:.85rem}
 </style>
 </head>
 <body>
@@ -88,9 +96,10 @@
 <main class="max-w-7xl mx-auto px-4 py-6">
   <section class="mb-4">
     <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-      <div class="flex-1 relative">
-        <input id="tickerInput" type="text" placeholder="הקלד סימול מניה (למשל: AAPL, MSFT, GOOGL)..." class="w-full text-lg pr-4 pl-12 py-3 font-m uppercase" onkeydown="if(event.key==='Enter') analyzeStock()"/>
+      <div class="flex-1 relative" id="searchWrap">
+        <input id="tickerInput" type="text" placeholder="הקלד סימול מניה (למשל: AAPL, MSFT, GOOGL)..." class="w-full text-lg pr-4 pl-12 py-3 font-m uppercase" onkeydown="handleTickerKey(event)" oninput="onTickerInput()" autocomplete="off"/>
         <svg class="absolute left-4 top-1/2 -translate-y-1/2" style="color:var(--txt3)" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <div id="suggestBox" class="suggest-box hidden"></div>
       </div>
       <button onclick="analyzeStock()" class="btn btn-gold text-base py-3 px-8">🔍 נתח מניה</button>
     </div>
@@ -282,6 +291,113 @@ function switchTab(tab, btn) {
   $("tab-portfolio").classList.toggle("hidden", tab !== "portfolio");
   if (tab === "portfolio") renderPortfolio();
 }
+
+/* ==============================================================
+   TICKER AUTOCOMPLETE — Alpha Vantage SYMBOL_SEARCH
+   ============================================================== */
+var suggestTimer = null;
+var suggestActiveIdx = -1;
+var suggestResults = [];
+
+function onTickerInput() {
+  var val = $("tickerInput").value.trim();
+  if (val.length < 1) { hideSuggest(); return; }
+  /* Debounce: wait 350ms after last keystroke */
+  clearTimeout(suggestTimer);
+  suggestTimer = setTimeout(function() { fetchSuggestions(val); }, 350);
+}
+
+function handleTickerKey(event) {
+  var box = $("suggestBox");
+  var items = box.querySelectorAll(".suggest-item");
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    suggestActiveIdx = Math.min(suggestActiveIdx + 1, items.length - 1);
+    updateSuggestHighlight(items);
+  } else if (event.key === "ArrowUp") {
+    event.preventDefault();
+    suggestActiveIdx = Math.max(suggestActiveIdx - 1, 0);
+    updateSuggestHighlight(items);
+  } else if (event.key === "Enter") {
+    if (suggestActiveIdx >= 0 && items[suggestActiveIdx]) {
+      event.preventDefault();
+      items[suggestActiveIdx].click();
+    } else {
+      hideSuggest();
+      analyzeStock();
+    }
+  } else if (event.key === "Escape") {
+    hideSuggest();
+  }
+}
+
+function updateSuggestHighlight(items) {
+  for (var i = 0; i < items.length; i++) {
+    items[i].classList.toggle("active", i === suggestActiveIdx);
+  }
+  if (items[suggestActiveIdx]) items[suggestActiveIdx].scrollIntoView({ block: "nearest" });
+}
+
+async function fetchSuggestions(query) {
+  var box = $("suggestBox");
+  box.classList.remove("hidden");
+  box.innerHTML = '<div class="suggest-loading">🔍 מחפש...</div>';
+  suggestActiveIdx = -1;
+
+  try {
+    var url = AV_BASE + "?function=SYMBOL_SEARCH&keywords=" + encodeURIComponent(query) + "&apikey=" + getAvKey();
+    var res = await fetch(url);
+    var data = await res.json();
+
+    if (data["Note"] || data["Information"]) {
+      box.innerHTML = '<div class="suggest-loading">⏱ מגבלת קריאות — נסה שוב עוד רגע</div>';
+      return;
+    }
+
+    var matches = data.bestMatches || [];
+    if (matches.length === 0) {
+      box.innerHTML = '<div class="suggest-loading">לא נמצאו תוצאות עבור "' + query + '"</div>';
+      return;
+    }
+
+    suggestResults = matches;
+    var html = "";
+    for (var i = 0; i < Math.min(matches.length, 8); i++) {
+      var m = matches[i];
+      var sym = m["1. symbol"] || "";
+      var name = m["2. name"] || "";
+      var type = m["3. type"] || "";
+      var region = m["4. region"] || "";
+      html += '<div class="suggest-item" data-symbol="' + sym + '" onclick="selectSuggestion(\'' + sym.replace(/'/g, "\\'") + '\')">';
+      html += '<span class="suggest-sym">' + sym + '</span>';
+      html += '<span class="suggest-name">' + name + '</span>';
+      html += '<span class="suggest-type">' + type + (region ? " · " + region : "") + '</span>';
+      html += '</div>';
+    }
+    box.innerHTML = html;
+  } catch (err) {
+    console.warn("[Suggest]", err);
+    box.innerHTML = '<div class="suggest-loading">שגיאה בחיפוש</div>';
+  }
+}
+
+function selectSuggestion(symbol) {
+  $("tickerInput").value = symbol;
+  hideSuggest();
+  $("tickerInput").focus();
+}
+
+function hideSuggest() {
+  $("suggestBox").classList.add("hidden");
+  $("suggestBox").innerHTML = "";
+  suggestActiveIdx = -1;
+  suggestResults = [];
+}
+
+/* Close suggestions when clicking outside */
+document.addEventListener("click", function(e) {
+  if (!$("searchWrap").contains(e.target)) hideSuggest();
+});
 
 /* ==============================================================
    ALPHA VANTAGE FETCH
