@@ -301,10 +301,10 @@ var suggestResults = [];
 
 function onTickerInput() {
   var val = $("tickerInput").value.trim();
-  if (val.length < 1) { hideSuggest(); return; }
-  /* Debounce: wait 350ms after last keystroke */
+  if (val.length < 2) { hideSuggest(); return; }
+  /* Debounce: wait 500ms after last keystroke to save API calls */
   clearTimeout(suggestTimer);
-  suggestTimer = setTimeout(function() { fetchSuggestions(val); }, 350);
+  suggestTimer = setTimeout(function() { fetchSuggestions(val); }, 500);
 }
 
 function handleTickerKey(event) {
@@ -414,16 +414,27 @@ async function avFetch(func, symbol, extra) {
   if (!res.ok) throw new Error("שגיאת שרת Alpha Vantage: " + res.status);
   var data = await res.json();
 
-  /* Check for AV error messages */
-  if (data["Error Message"]) { console.error("[AV Error]", data["Error Message"]); throw new Error("AV_ERROR: " + data["Error Message"]); }
-  if (data["Note"]) { console.warn("[AV Rate Limit]", data["Note"]); throw new Error("AV_RATE_LIMIT"); }
-  if (data["Information"]) {
-    if (data["Information"].indexOf("rate limit") !== -1 || data["Information"].indexOf("API call volume") !== -1) {
-      throw new Error("AV_RATE_LIMIT");
-    }
+  console.log("[AV Response]", func, "→ keys:", Object.keys(data).join(", "), "| sample:", JSON.stringify(data).substring(0, 200));
+
+  /* Check for explicit error */
+  if (data["Error Message"]) {
+    console.error("[AV Error]", data["Error Message"]);
+    throw new Error("AV_ERROR: " + data["Error Message"]);
   }
 
-  console.log("[AV OK]", func, "→ keys:", Object.keys(data).join(", "));
+  /* Rate limit: only throw if the ONLY key is "Note" or "Information" (no real data) */
+  var dataKeys = Object.keys(data);
+  if (data["Note"] && dataKeys.length <= 1) {
+    console.warn("[AV Rate Limit - Note]", data["Note"]);
+    throw new Error("AV_RATE_LIMIT");
+  }
+  if (data["Information"] && dataKeys.length <= 1) {
+    console.warn("[AV Rate Limit - Information]", data["Information"]);
+    throw new Error("AV_RATE_LIMIT");
+  }
+
+  /* If we got here, we have real data (possibly with an informational note alongside it) */
+  console.log("[AV OK]", func, "→", dataKeys.length, "keys");
   return data;
 }
 
@@ -432,24 +443,32 @@ async function fetchAllData(ticker) {
   console.log("=== Alpha Vantage fetch for", ticker, "===");
   console.log("  Key:", key.substring(0,4) + "****");
 
-  /* Fetch OVERVIEW, GLOBAL_QUOTE and CASH_FLOW in parallel */
-  var results = await Promise.all([
-    avFetch("OVERVIEW", ticker).catch(function(e) { console.warn("[AV skip] OVERVIEW:", e.message); return {}; }),
-    avFetch("GLOBAL_QUOTE", ticker).catch(function(e) { console.warn("[AV skip] GLOBAL_QUOTE:", e.message); return {}; }),
-    avFetch("CASH_FLOW", ticker).catch(function(e) { console.warn("[AV skip] CASH_FLOW:", e.message); return {}; })
-  ]);
+  /* Fetch OVERVIEW, GLOBAL_QUOTE and CASH_FLOW — sequential with small delays to avoid rate limit */
+  var overview = {};
+  var gqRaw = {};
+  var cfRaw = {};
 
-  var overview = results[0] || {};
-  var gq = (results[1] && results[1]["Global Quote"]) ? results[1]["Global Quote"] : {};
-  var cfRaw = results[2] || {};
+  try { overview = await avFetch("OVERVIEW", ticker); } catch(e) { console.warn("[AV skip] OVERVIEW:", e.message); overview = {}; }
+  try { gqRaw = await avFetch("GLOBAL_QUOTE", ticker); } catch(e) { console.warn("[AV skip] GLOBAL_QUOTE:", e.message); gqRaw = {}; }
+  try { cfRaw = await avFetch("CASH_FLOW", ticker); } catch(e) { console.warn("[AV skip] CASH_FLOW:", e.message); cfRaw = {}; }
+
+  var gq = (gqRaw && gqRaw["Global Quote"]) ? gqRaw["Global Quote"] : {};
   var cfAnnual = (cfRaw.annualReports && cfRaw.annualReports.length) ? cfRaw.annualReports[0] : {};
   var cfPrev = (cfRaw.annualReports && cfRaw.annualReports.length > 1) ? cfRaw.annualReports[1] : {};
+
+  console.log("[fetchAllData] Raw overview keys:", Object.keys(overview).length, "| GQ keys:", Object.keys(gq).length, "| CF annual:", !!cfAnnual.operatingCashflow);
 
   /* Map Alpha Vantage fields to our unified data model */
   var price = num(gq["05. price"]);
   var prevClose = num(gq["08. previous close"]);
   var changeAbs = num(gq["09. change"]);
   var changePct = num((gq["10. change percent"]||"").replace("%",""));
+
+  /* Fallback: if GLOBAL_QUOTE failed but OVERVIEW has AnalystTargetPrice, use it as estimate */
+  if (!price && overview.AnalystTargetPrice) {
+    console.warn("[fetchAllData] No price from GLOBAL_QUOTE, using AnalystTargetPrice as fallback");
+    price = num(overview.AnalystTargetPrice);
+  }
 
   var data = {
     quote: {
@@ -536,7 +555,16 @@ async function analyzeStock() {
   try {
     showLoading("טוען נתונים מ-Alpha Vantage...", "OVERVIEW + GLOBAL_QUOTE + CASH_FLOW");
     var data = await fetchAllData(ticker);
-    if (!data.quote.price) { showError("לא נמצאו נתונים עבור " + ticker + ". ודא שהסימול תקין."); return; }
+    if (!data.quote.price) {
+      var debugInfo = "Overview keys: " + Object.keys(data._raw.overview).length + " | GQ keys: " + Object.keys(data._raw.globalQuote).length;
+      console.error("[analyzeStock] No price found.", debugInfo, data._raw);
+      if (Object.keys(data._raw.overview).length <= 1 && Object.keys(data._raw.globalQuote).length <= 1) {
+        showError("⏱ נראה שהגעת למגבלת הקריאות של Alpha Vantage (25/יום). נסה שוב מחר או הזן מפתח Premium.");
+      } else {
+        showError("לא נמצאו נתוני מחיר עבור " + ticker + ". ודא שהסימול תקין. (פתח Console לפרטים)");
+      }
+      return;
+    }
 
     showLoading("🤖 שולח נתונים לניתוח AI...", "מעבד " + ticker + " עם Claude");
     var aiResult = await callClaudeAnalysis(data, ticker, anthropicKey);
