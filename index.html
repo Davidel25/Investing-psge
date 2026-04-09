@@ -53,6 +53,10 @@
   .buy-yes{background:rgba(34,197,94,.15);color:var(--grn)}.buy-no{background:rgba(239,68,68,.1);color:var(--red)}
   .chip-grn{display:inline-block;background:rgba(34,197,94,.12);color:#4ade80;font-size:.75rem;padding:2px 10px;border-radius:999px}
   .chip-red{display:inline-block;background:rgba(239,68,68,.12);color:#f87171;font-size:.75rem;padding:2px 10px;border-radius:999px}
+  .moat-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:8px;font-weight:700;font-size:.9rem}
+  .moat-wide{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.25)}
+  .moat-narrow{background:rgba(234,179,8,.12);color:#eab308;border:1px solid rgba(234,179,8,.2)}
+  .moat-none{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
   .site-header{position:sticky;top:0;z-index:50;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);background:rgba(10,10,15,.82);border-bottom:1px solid var(--s300)}
   .logo-box{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--gold),#a07830);display:flex;align-items:center;justify-content:center}
   .font-d{font-family:'Playfair Display',serif}.font-m{font-family:'JetBrains Mono',monospace}
@@ -152,6 +156,29 @@
         <div class="card"><p class="metric-label">PEG Ratio</p><p class="metric-value text-2xl" id="pegCard">—</p><p class="text-xs mt-1" style="color:var(--txt3)" id="pegStatus">—</p></div>
         <div class="card"><p class="metric-label">צמיחת EPS</p><p class="metric-value text-2xl" id="epsGrowth">—</p><p class="text-xs mt-1" style="color:var(--txt3)">רבעוני YOY</p></div>
         <div class="card"><p class="metric-label">FCF / רווח נקי</p><p class="metric-value text-2xl" id="fcfRatio">—</p><p class="text-xs mt-1" style="color:var(--txt3)" id="fcfStatus">—</p></div>
+      </div>
+      <!-- DCF Valuation + Moat Row -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 fade-up fd3">
+        <div class="card" style="border-color:rgba(59,130,246,.25)">
+          <div class="flex items-center gap-2 mb-3"><span class="text-lg">💎</span><h3 class="font-bold" style="color:var(--blue)">הערכת שווי DCF</h3></div>
+          <div class="flex items-end justify-between">
+            <div>
+              <p class="metric-label">ערך הוגן למניה</p>
+              <p class="font-m text-3xl font-bold" style="color:var(--blue)" id="dcfFairValue">—</p>
+            </div>
+            <div style="text-align:left">
+              <p class="metric-label">פוטנציאל (Upside/Downside)</p>
+              <p class="font-m text-2xl font-bold" id="dcfUpside">—</p>
+            </div>
+          </div>
+          <p class="text-xs mt-3" style="color:var(--txt3)" id="dcfNote">—</p>
+        </div>
+        <div class="card" style="border-color:rgba(212,168,83,.25)">
+          <div class="flex items-center gap-2 mb-3"><span class="text-lg">🏰</span><h3 class="font-bold" style="color:var(--gold)">חפיר כלכלי (Moat)</h3></div>
+          <div id="moatBadge" class="mb-3"></div>
+          <p class="text-sm" style="color:var(--txt3)" id="moatAnalysis">—</p>
+          <p class="text-xs mt-2" style="color:var(--txt3)" id="moatCompetitors">—</p>
+        </div>
       </div>
       <div class="card fade-up fd3" style="border-color:rgba(212,168,83,.2)">
         <div class="flex items-center gap-2 mb-4"><span class="text-lg">🤖</span><h3 class="font-d text-lg font-bold" style="color:var(--gold)">ניתוח AI מפורט</h3></div>
@@ -420,7 +447,8 @@ async function callClaudeAnalysis(data, ticker, apiKey) {
   var prompt = "אתה אנליסט השקעות ערך מחמיר בסגנון בנג'מין גראהם ו-וורן באפט. נתח את הנתונים הבאים עבור " + ticker + " והחזר אך ורק JSON תקין (ללא markdown, ללא backticks, ללא טקסט נוסף).\n\n" +
     "=== נתוני מחיר ===\n" +
     "מחיר: $" + q.price + " | שווי שוק: $" + q.marketCap + " | Beta: " + (q.beta||"N/A") + " | EPS: $" + q.eps + "\n" +
-    "טווח 52 שבועות: $" + q.yearLow + " - $" + q.yearHigh + " | מחזור: " + q.volume + "\n\n" +
+    "טווח 52 שבועות: $" + q.yearLow + " - $" + q.yearHigh + " | מחזור: " + q.volume + "\n" +
+    "מניות בהנפקה: " + (ov.sharesOutstanding||"N/A") + "\n\n" +
     "=== נתונים פונדמנטליים ===\n" +
     "P/E: " + ov.pe + " | Forward P/E: " + ov.forwardPE + " | PEG: " + ov.pegRatio + "\n" +
     "EV/EBITDA: " + ov.evToEbitda + " | P/B: " + ov.priceToBook + "\n" +
@@ -432,30 +460,38 @@ async function callClaudeAnalysis(data, ticker, apiKey) {
     "=== תזרים מזומנים (שנתי אחרון) ===\n" +
     "תזרים תפעולי: $" + cf.operatingCashflow + " | CapEx: $" + cf.capitalExpenditures + "\n" +
     "FCF (מחושב): $" + cf.freeCashFlow + " | רווח נקי: $" + cf.netIncome + "\n\n" +
-    "=== מתודולוגיית ציון (0-100) — שקלול מתמטי ===\n" +
-    "חשב את הציון כסכום משוקלל של הקטגוריות הבאות:\n\n" +
-    "1. תשואה על הון — ROE (25 נקודות):\n" +
-    "   ROE >= 0.20 → 25 נק' | ROE >= 0.15 → 20 נק' | ROE >= 0.10 → 12 נק' | ROE < 0.10 → 5 נק'\n\n" +
-    "2. מכפיל PEG (25 נקודות):\n" +
-    "   PEG <= 0.75 → 25 נק' | PEG <= 1.0 → 20 נק' | PEG <= 1.5 → 12 נק' | PEG > 1.5 או חסר → 5 נק'\n\n" +
-    "3. איכות רווח ותזרים (25 נקודות):\n" +
-    "   FCF/NetIncome >= 1.0 → 25 נק' | >= 0.8 → 20 נק' | >= 0.5 → 12 נק' | < 0.5 → 5 נק'\n" +
-    "   (אם חסר נתון — 10 נק')\n\n" +
-    "4. תמחור וסיכון (25 נקודות):\n" +
-    "   P/B < 1.5 → +8 | P/B < 3 → +5 | אחרת → +2\n" +
-    "   Beta < 0.8 → +8 | Beta < 1.2 → +5 | אחרת → +2\n" +
-    "   מחיר מתחת ליעד אנליסטים → +9 | מעל → +3\n\n" +
-    "חוק: ציון >= 80 = אישור קנייה. מתחת ל-80 = לא לקנות.\n" +
-    "הקצאת תיק: מקסימום 10%. ציון 90+ ו-Beta<1 → 8-10%. ציון 80-89 → 5-7%. פחות → 2-4%.\n\n" +
-    "הנחיה קריטית: היה מחמיר. חברה טובה עם PEG גבוה מדי או ROE נמוך לא עוברת את הסף.\n" +
-    "כל הטקסטים חייבים להיות בעברית מקצועית.\n\n" +
-    "החזר אך ורק את ה-JSON הבא:\n" +
-    '{"score":<0-100 שקלול מתמטי>,"buy_signal":<boolean>,"position_pct":<מקס 10>,"target_price":<מספר>,"stop_loss":<מספר>,"risk_reward_ratio":"<1:X>","score_breakdown":{"roe_score":<0-25>,"peg_score":<0-25>,"fcf_score":<0-25>,"valuation_score":<0-25>},"strengths":["חוזק1","חוזק2","חוזק3"],"weaknesses":["חולשה1","חולשה2"],"summary":"<2-3 משפטים בעברית>","financial_health":"<1-2 משפטים בעברית>","valuation_note":"<1-2 משפטים בעברית>","recommendation":"<קנייה/הימנעות/החזקה/מכירה>"}';
+    "=== משימות ניתוח ===\n\n" +
+    "משימה 1 — ציון ערך (0-100), שקלול מתמטי:\n" +
+    "  ROE (25 נק'): >=0.20→25 | >=0.15→20 | >=0.10→12 | <0.10→5\n" +
+    "  PEG (25 נק'): <=0.75→25 | <=1.0→20 | <=1.5→12 | >1.5→5\n" +
+    "  FCF/NetIncome (25 נק'): >=1.0→25 | >=0.8→20 | >=0.5→12 | <0.5→5\n" +
+    "  תמחור+סיכון (25 נק'): P/B<1.5→+8,<3→+5,else+2 | Beta<0.8→+8,<1.2→+5,else+2 | מתחת ליעד→+9,else+3\n" +
+    "  ציון >= 80 = אישור קנייה. פחות = לא.\n\n" +
+    "משימה 2 — מודל DCF (Discounted Cash Flow):\n" +
+    "  חשב ערך הוגן למניה (intrinsic_value) על בסיס:\n" +
+    "  - FCF הנוכחי: $" + cf.freeCashFlow + "\n" +
+    "  - שיעור צמיחה משוער: השתמש בצמיחת ההכנסות או EPS כבסיס (5 שנים קדימה)\n" +
+    "  - שיעור היוון (Discount Rate): 10% כברירת מחדל\n" +
+    "  - צמיחה טרמינלית: 2.5%\n" +
+    "  - חלק בסכום המניות בהנפקה\n" +
+    "  חשב את אחוז ה-Upside/Downside: ((intrinsic_value - price) / price * 100)\n\n" +
+    "משימה 3 — חפיר כלכלי (Economic Moat):\n" +
+    "  דרג את היתרון התחרותי: wide_moat / narrow_moat / no_moat\n" +
+    "  נמק בעברית: מה מגן על הרווחים? (מותג, עלויות מעבר, יתרון גודל, פטנטים, אפקט רשת)\n" +
+    "  ציין 2-3 מתחרים ישירים בסקטור והשווה בקצרה.\n\n" +
+    "הנחיה קריטית: היה מחמיר. כל הטקסטים בעברית מקצועית.\n\n" +
+    "החזר אך ורק JSON בפורמט הזה:\n" +
+    '{"score":<0-100>,"buy_signal":<bool>,"position_pct":<max 10>,"target_price":<num>,"stop_loss":<num>,"risk_reward_ratio":"<1:X>",' +
+    '"score_breakdown":{"roe_score":<0-25>,"peg_score":<0-25>,"fcf_score":<0-25>,"valuation_score":<0-25>},' +
+    '"dcf":{"intrinsic_value":<num>,"upside_pct":<num>,"growth_rate_used":<num>,"discount_rate":0.10,"dcf_note":"<עברית>"},' +
+    '"moat":{"rating":"<wide_moat|narrow_moat|no_moat>","explanation":"<עברית 2-3 משפטים>","competitors":"<עברית — השוואה ל-2-3 מתחרים>"},' +
+    '"strengths":["חוזק1","חוזק2","חוזק3"],"weaknesses":["חולשה1","חולשה2"],' +
+    '"summary":"<2-3 משפטים>","financial_health":"<1-2 משפטים>","valuation_note":"<1-2 משפטים>","recommendation":"<קנייה/הימנעות/החזקה/מכירה>"}';
 
   var response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type":"application/json", "x-api-key":apiKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
-    body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1500, messages:[{role:"user",content:prompt}] })
+    body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:2500, messages:[{role:"user",content:prompt}] })
   });
 
   if (!response.ok) {
@@ -582,6 +618,35 @@ function renderResults(data, ai, ticker) {
   if (ai.strengths && ai.strengths.length) { h += '<div><h4 class="font-bold text-sm mb-2" style="color:var(--grn)">✅ חוזקות</h4><div class="flex flex-wrap gap-2">'; for(var i=0;i<ai.strengths.length;i++) h+='<span class="chip-grn">'+ai.strengths[i]+"</span>"; h+="</div></div>"; }
   if (ai.weaknesses && ai.weaknesses.length) { h += '<div><h4 class="font-bold text-sm mb-2" style="color:var(--red)">⚠️ חולשות</h4><div class="flex flex-wrap gap-2">'; for(var i=0;i<ai.weaknesses.length;i++) h+='<span class="chip-red">'+ai.weaknesses[i]+"</span>"; h+="</div></div>"; }
   $("aiAnalysis").innerHTML = h;
+
+  /* DCF Valuation Card */
+  if (ai.dcf) {
+    var dcf = ai.dcf;
+    $("dcfFairValue").textContent = "$" + fmt(dcf.intrinsic_value);
+    var up = dcf.upside_pct;
+    $("dcfUpside").textContent = (up >= 0 ? "+" : "") + fmt(up, 0) + "%";
+    $("dcfUpside").style.color = up >= 20 ? "var(--grn)" : up >= 0 ? "var(--gold)" : "var(--red)";
+    $("dcfNote").textContent = dcf.dcf_note || ("שיעור צמיחה: " + fmt(dcf.growth_rate_used*100,1) + "% | היוון: " + fmt(dcf.discount_rate*100,0) + "%");
+  } else {
+    $("dcfFairValue").textContent = "—";
+    $("dcfUpside").textContent = "—";
+    $("dcfNote").textContent = "לא זמין — חסרים נתוני תזרים";
+  }
+
+  /* Moat Badge */
+  if (ai.moat) {
+    var m = ai.moat;
+    var moatLabels = { wide_moat: "🏰 חפיר רחב (Wide Moat)", narrow_moat: "🛡 חפיר צר (Narrow Moat)", no_moat: "⚠ ללא חפיר (No Moat)" };
+    var moatClasses = { wide_moat: "moat-wide", narrow_moat: "moat-narrow", no_moat: "moat-none" };
+    var rating = m.rating || "no_moat";
+    $("moatBadge").innerHTML = '<span class="moat-badge ' + (moatClasses[rating]||"moat-none") + '">' + (moatLabels[rating]||rating) + '</span>';
+    $("moatAnalysis").textContent = m.explanation || "—";
+    $("moatCompetitors").innerHTML = m.competitors ? '<span style="color:var(--gold)">⚔ מתחרים:</span> ' + m.competitors : "";
+  } else {
+    $("moatBadge").innerHTML = '<span class="moat-badge moat-none">— לא זמין</span>';
+    $("moatAnalysis").textContent = "—";
+    $("moatCompetitors").textContent = "";
+  }
 
   /* Alerts */
   var alerts = "";
