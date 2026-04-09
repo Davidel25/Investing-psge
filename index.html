@@ -3,10 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FundaVest — ניתוח השקעות פונדמנטלי</title>
+<title>FundaVest Pro — ניתוח ערך מתקדם</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <style>
   :root{--s50:#0a0a0f;--s100:#12121a;--s200:#1a1a25;--s300:#222233;--s400:#2a2a3d;--gold:#d4a853;--grn:#22c55e;--red:#ef4444;--blue:#3b82f6;--cyan:#06b6d4;--txt:#e2e2e8;--txt2:#a0a0b0;--txt3:#6b6b7b}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -18,611 +20,239 @@
   .score-ring .fg-c{stroke-linecap:round;transition:stroke-dashoffset 1.5s cubic-bezier(.4,0,.2,1),stroke .5s}
   .score-value{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
   .score-number{font-family:'Playfair Display',serif;font-size:4rem;font-weight:800;line-height:1}
-  .glow-green{box-shadow:0 0 40px rgba(34,197,94,.15),0 0 80px rgba(34,197,94,.05)}
-  .glow-red{box-shadow:0 0 40px rgba(239,68,68,.15),0 0 80px rgba(239,68,68,.05)}
-  .glow-gold{box-shadow:0 0 40px rgba(212,168,83,.15),0 0 80px rgba(212,168,83,.05)}
   .spinner{width:48px;height:48px;border:3px solid var(--s200);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
-  ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--s50)}::-webkit-scrollbar-thumb{background:var(--s400);border-radius:3px}
-  input[type="text"],input[type="password"]{background:var(--s100);border:1px solid var(--s300);color:var(--txt);border-radius:8px;padding:10px 14px;font-family:'IBM Plex Sans',sans-serif;outline:none;transition:border-color .2s}
-  input:focus{border-color:var(--gold)}
-  .btn{padding:10px 20px;border-radius:8px;font-weight:600;font-size:.875rem;cursor:pointer;transition:all .2s;border:none;font-family:'IBM Plex Sans',sans-serif}
   .btn-gold{background:linear-gradient(135deg,#d4a853,#b8903f);color:#0a0a0f}
-  .btn-gold:hover{background:linear-gradient(135deg,#e0b863,#c49a4a);transform:translateY(-1px)}
-  .btn-outline{background:transparent;border:1px solid var(--s400);color:var(--txt2)}
-  .btn-outline:hover{border-color:var(--gold);color:var(--gold)}
-  .btn-green{background:#166534;color:var(--grn)}
-  .card{background:var(--s100);border:1px solid var(--s200);border-radius:12px;padding:20px;transition:border-color .3s}
-  .card:hover{border-color:var(--s400)}
+  .card{background:var(--s100);border:1px solid var(--s200);border-radius:12px;padding:20px}
   .metric-label{font-size:.75rem;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
   .metric-value{font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:600}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-  .fade-up{animation:fadeUp .6s ease-out forwards}
-  .fd1{animation-delay:.1s;opacity:0}.fd2{animation-delay:.2s;opacity:0}.fd3{animation-delay:.3s;opacity:0}.fd4{animation-delay:.4s;opacity:0}
-  .tab-btn{padding:8px 16px;border-radius:6px;font-size:.85rem;cursor:pointer;transition:all .2s;background:transparent;border:none;color:var(--txt3);font-family:'IBM Plex Sans',sans-serif}
-  .tab-btn.active{background:var(--s200);color:var(--gold)}.tab-btn:hover:not(.active){color:var(--txt2)}
-  .alert-banner{padding:10px 16px;border-radius:8px;font-size:.85rem;display:flex;align-items:center;gap:8px}
-  .alert-warn{background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.2);color:#eab308}
-  .alert-info{background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.2);color:var(--cyan)}
-  table{width:100%;border-collapse:collapse}
-  th{text-align:right;padding:10px 12px;font-size:.75rem;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--s200);background:var(--s100)}
-  td{padding:12px;border-bottom:1px solid var(--s100);font-size:.9rem}
-  tr:hover td{background:rgba(26,26,37,.5)}
   .buy-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-weight:700;font-size:.85rem}
-  .buy-yes{background:rgba(34,197,94,.15);color:var(--grn)}.buy-no{background:rgba(239,68,68,.1);color:var(--red)}
-  .chip-grn{display:inline-block;background:rgba(34,197,94,.12);color:#4ade80;font-size:.75rem;padding:2px 10px;border-radius:999px}
-  .chip-red{display:inline-block;background:rgba(239,68,68,.12);color:#f87171;font-size:.75rem;padding:2px 10px;border-radius:999px}
-  .site-header{position:sticky;top:0;z-index:50;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);background:rgba(10,10,15,.82);border-bottom:1px solid var(--s300)}
-  .logo-box{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--gold),#a07830);display:flex;align-items:center;justify-content:center}
-  .font-d{font-family:'Playfair Display',serif}.font-m{font-family:'JetBrains Mono',monospace}
-  .rate-note{background:rgba(212,168,83,.08);border:1px solid rgba(212,168,83,.15);border-radius:8px;padding:8px 14px;font-size:.78rem;color:var(--gold);text-align:center}
+  .buy-yes{background:rgba(34,197,94,.15);color:var(--grn)}
+  .buy-no{background:rgba(239,68,68,.1);color:var(--red)}
+  .chip-grn{display:inline-block;background:rgba(34,197,94,.12);color:#4ade80;font-size:.75rem;padding:2px 10px;border-radius:999px;border:1px solid rgba(34,197,94,0.2)}
+  .chip-red{display:inline-block;background:rgba(239,68,68,.12);color:#f87171;font-size:.75rem;padding:2px 10px;border-radius:999px;border:1px solid rgba(239,68,68,0.2)}
+  .no-print{ display: block; }
+  @media print { .no-print { display: none !important; } }
 </style>
 </head>
 <body>
 
-<header class="site-header">
+<header class="sticky top-0 z-50 backdrop-blur-md bg-black/80 border-b border-gray-800 no-print">
   <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
     <div class="flex items-center gap-3">
-      <div class="logo-box"><svg width="20" height="20" fill="none" stroke="#0a0a0f" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg></div>
-      <h1 class="font-d text-xl font-bold tracking-tight" style="color:var(--gold)">FundaVest</h1>
+      <div class="w-9 h-9 bg-gold rounded-lg flex items-center justify-center font-bold text-black">FV</div>
+      <h1 class="text-xl font-bold text-gold font-d">FundaVest Pro</h1>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <input id="apiKeyInput" type="password" placeholder="Anthropic API Key" class="w-48 text-xs"/>
-      <button onclick="saveAnthropicKey()" class="btn btn-outline text-xs py-2 px-3">שמור</button>
-      <div class="w-px h-6 mx-1 hidden sm:block" style="background:var(--s300)"></div>
-      <input id="avKeyInput" type="password" placeholder="Alpha Vantage Key (אופציונלי)" class="w-52 text-xs"/>
-      <button onclick="saveAvKey()" class="btn btn-outline text-xs py-2 px-3">שמור AV</button>
-      <div class="w-px h-6 mx-1 hidden sm:block" style="background:var(--s300)"></div>
-      <button onclick="exportBackup()" class="btn btn-outline text-xs py-2 px-3">📤 גיבוי</button>
-      <button onclick="importBackup()" class="btn btn-outline text-xs py-2 px-3">📥 ייבוא</button>
-      <input type="file" id="importFile" accept=".json" class="hidden" onchange="handleImport(event)"/>
+      <input id="apiKeyInput" type="password" placeholder="Anthropic API Key" class="bg-gray-900 border border-gray-700 p-2 rounded text-xs w-40"/>
+      <input id="avKeyInput" type="password" placeholder="Alpha Vantage Key" class="bg-gray-900 border border-gray-700 p-2 rounded text-xs w-40"/>
+      <button onclick="saveKeys()" class="bg-gold text-black px-3 py-1 rounded text-xs font-bold">שמור</button>
     </div>
   </div>
 </header>
 
-<main class="max-w-7xl mx-auto px-4 py-6">
-  <section class="mb-4">
-    <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-      <div class="flex-1 relative">
-        <input id="tickerInput" type="text" placeholder="הקלד סימול מניה (למשל: AAPL, MSFT, GOOGL)..." class="w-full text-lg pr-4 pl-12 py-3 font-m uppercase" onkeydown="if(event.key==='Enter') analyzeStock()"/>
-        <svg class="absolute left-4 top-1/2 -translate-y-1/2" style="color:var(--txt3)" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      </div>
-      <button onclick="analyzeStock()" class="btn btn-gold text-base py-3 px-8">🔍 נתח מניה</button>
+<main class="max-w-7xl mx-auto px-4 py-8">
+  <section class="mb-6 no-print">
+    <div class="flex flex-col sm:flex-row gap-3">
+      <input id="tickerInput" type="text" placeholder="סימול מניה (MSFT, SABR, AAPL)" class="flex-1 bg-gray-900 border border-gray-700 p-4 rounded-xl text-xl font-m uppercase focus:border-gold outline-none" onkeydown="if(event.key==='Enter') analyzeStock()"/>
+      <button onclick="analyzeStock()" class="btn-gold px-10 text-lg font-bold rounded-xl">נתח עכשיו</button>
     </div>
   </section>
-  <div class="rate-note mb-6">⏱ שים לב: בגרסה החינמית של Alpha Vantage יש מגבלה של 25 קריאות ליום. מומלץ להמתין מספר שניות בין ניתוח לניתוח.</div>
 
-  <div class="flex gap-2 mb-6 pb-2" style="border-bottom:1px solid var(--s300)">
-    <button class="tab-btn active" onclick="switchTab('analysis',this)">📊 ניתוח</button>
-    <button class="tab-btn" onclick="switchTab('portfolio',this)">💼 תיק השקעות</button>
-  </div>
-
-  <div id="tab-analysis">
-    <div id="loadingState" class="hidden flex-col items-center justify-center py-20 gap-4">
+  <div id="loading" class="hidden flex flex-col items-center py-20 gap-4">
       <div class="spinner"></div>
-      <p id="loadingText" style="color:var(--txt3)">טוען נתונים...</p>
-      <p id="loadingSub" class="text-xs" style="color:var(--txt3);opacity:.6"></p>
-    </div>
-    <div id="errorState" class="hidden">
-      <div class="card text-center py-12" style="border-color:rgba(239,68,68,.2)">
-        <p class="text-2xl mb-2">⚠️</p>
-        <p id="errorMessage" class="font-medium" style="color:var(--red)"></p>
-      </div>
-    </div>
-    <div id="emptyState" class="flex flex-col items-center justify-center py-20 gap-4">
-      <div class="text-6xl" style="opacity:.3">📈</div>
-      <p class="text-lg" style="color:var(--txt3)">הקלד סימול מניה למעלה כדי להתחיל בניתוח</p>
-      <p class="text-sm" style="color:var(--txt3);opacity:.6">נתונים פונדמנטליים בלבד — ללא רעש, רק מספרים</p>
-    </div>
-
-    <div id="resultsArea" class="hidden space-y-6">
-      <div id="alertsRow" class="space-y-2"></div>
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 fade-up fd1">
-        <div class="card flex flex-col items-center justify-center py-8" id="scoreCard">
-          <div class="score-ring">
-            <svg viewBox="0 0 220 220"><circle class="bg-c" cx="110" cy="110" r="96"/><circle class="fg-c" id="scoreCircle" cx="110" cy="110" r="96" stroke-dasharray="603.19" stroke-dashoffset="603.19"/></svg>
-            <div class="score-value"><span class="score-number" id="scoreNumber">—</span><span class="text-xs mt-1" style="color:var(--txt3)">מתוך 100</span></div>
-          </div>
-          <div id="buySignal" class="mt-4"></div>
-          <div id="positionSize" class="mt-2 text-sm" style="color:var(--txt3)"></div>
-        </div>
-        <div class="card col-span-1 lg:col-span-2 space-y-4">
-          <div class="flex items-start justify-between">
-            <div><h2 id="companyName" class="font-d text-2xl font-bold" style="color:var(--txt)">—</h2><p id="companyTicker" class="font-m text-lg" style="color:var(--gold)">—</p></div>
-            <div class="text-left"><p id="currentPrice" class="font-m text-3xl font-bold" style="color:var(--txt)">—</p><p id="priceChange" class="font-m text-sm">—</p></div>
-          </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4" style="border-top:1px solid var(--s300)">
-            <div><p class="metric-label">שווי שוק</p><p class="metric-value" style="color:var(--txt)" id="mktCap">—</p></div>
-            <div><p class="metric-label">מחזור מסחר</p><p class="metric-value" style="color:var(--txt)" id="volume">—</p></div>
-            <div><p class="metric-label">טווח 52 שבועות</p><p class="metric-value" style="color:var(--txt)" id="range52">—</p></div>
-            <div><p class="metric-label">Beta</p><p class="metric-value" style="color:var(--txt)" id="betaVal">—</p></div>
-          </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div><p class="metric-label">P/E TTM</p><p class="metric-value" style="color:var(--txt)" id="peRatio">—</p></div>
-            <div><p class="metric-label">EV/EBITDA</p><p class="metric-value" style="color:var(--txt)" id="evEbitda">—</p></div>
-            <div><p class="metric-label">ROE</p><p class="metric-value" style="color:var(--txt)" id="roe">—</p></div>
-            <div><p class="metric-label">תשואת דיבידנד</p><p class="metric-value" style="color:var(--txt)" id="divYield">—</p></div>
-          </div>
-        </div>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 fade-up fd2">
-        <div class="card"><p class="metric-label">חוב/הון (D/E)</p><p class="metric-value text-2xl" id="deRatio">—</p><p class="text-xs mt-1" style="color:var(--txt3)" id="deStatus">—</p></div>
-        <div class="card"><p class="metric-label">Book Value / מחיר</p><p class="metric-value text-2xl" style="color:var(--txt)" id="dcfValue">—</p><p class="text-xs mt-1" id="dcfMargin">—</p></div>
-        <div class="card"><p class="metric-label">צמיחת EPS</p><p class="metric-value text-2xl" id="epsGrowth">—</p><p class="text-xs mt-1" style="color:var(--txt3)">שנתי</p></div>
-        <div class="card"><p class="metric-label">FCF / רווח נקי</p><p class="metric-value text-2xl" id="fcfRatio">—</p><p class="text-xs mt-1" style="color:var(--txt3)" id="fcfStatus">—</p></div>
-      </div>
-      <div class="card fade-up fd3" style="border-color:rgba(212,168,83,.2)">
-        <div class="flex items-center gap-2 mb-4"><span class="text-lg">🤖</span><h3 class="font-d text-lg font-bold" style="color:var(--gold)">ניתוח AI מפורט</h3></div>
-        <div id="aiAnalysis" class="space-y-4 text-sm leading-relaxed" style="color:var(--txt3)"></div>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 fade-up fd4">
-        <div class="card">
-          <h3 class="font-bold mb-3 flex items-center gap-2" style="color:var(--txt)">🎯 נקודות יציאה</h3>
-          <div class="space-y-3">
-            <div class="flex justify-between items-center"><span style="color:var(--txt3)">מחיר יעד (Target)</span><span class="font-m font-bold text-lg" style="color:var(--grn)" id="targetPrice">—</span></div>
-            <div class="flex justify-between items-center"><span style="color:var(--txt3)">Stop Loss פונדמנטלי</span><span class="font-m font-bold text-lg" style="color:var(--red)" id="stopLoss">—</span></div>
-            <div class="flex justify-between items-center"><span style="color:var(--txt3)">יחס סיכון/סיכוי</span><span class="font-m font-bold" style="color:var(--gold)" id="riskReward">—</span></div>
-          </div>
-        </div>
-        <div class="card flex flex-col justify-between">
-          <div><h3 class="font-bold mb-3 flex items-center gap-2" style="color:var(--txt)">📌 פעולות</h3><p class="text-sm mb-4" style="color:var(--txt3)">סמן מניה זו כרכישה לצורך מעקב בתיק ההשקעות שלך</p></div>
-          <div class="flex gap-3"><button onclick="markAsBought()" class="btn btn-green flex-1 py-3">✓ סמן כרכישה</button></div>
-        </div>
-      </div>
-    </div>
+      <p id="loadingMsg" class="text-gold animate-pulse text-lg">שואב נתונים פונדמנטליים...</p>
   </div>
 
-  <div id="tab-portfolio" class="hidden">
-    <div class="flex flex-wrap justify-between items-center mb-6 gap-3">
-      <h2 class="font-d text-2xl font-bold" style="color:var(--txt)">💼 תיק ההשקעות שלי</h2>
-      <div class="flex gap-2">
-        <button onclick="refreshPortfolio()" class="btn btn-gold py-2 px-4">🔄 עדכן סטטוס תיק</button>
-        <button onclick="exportCSV()" class="btn btn-outline py-2 px-4">📑 ייצוא CSV</button>
-      </div>
+  <div id="resultsArea" class="hidden space-y-6">
+    <div class="flex justify-between items-center">
+        <div class="flex items-baseline gap-3">
+            <h2 id="compName" class="text-3xl font-bold font-d">---</h2>
+            <span id="compTicker" class="text-gold font-m text-xl">---</span>
+        </div>
+        <button onclick="exportToPDF()" class="no-print bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all">
+            📥 הורד דוח PDF
+        </button>
     </div>
-    <div id="portfolioEmpty" class="card text-center py-16"><p class="text-4xl mb-3" style="opacity:.3">💼</p><p style="color:var(--txt3)">התיק ריק. נתח מניה וסמן אותה כרכישה כדי להתחיל.</p></div>
-    <div id="portfolioTable" class="hidden card overflow-x-auto" style="padding:0">
-      <table><thead><tr><th>סימול</th><th>מחיר רכישה</th><th>מחיר נוכחי</th><th>תשואה</th><th>ציון</th><th>המלצה</th><th>תאריך</th><th>פעולות</th></tr></thead><tbody id="portfolioBody"></tbody></table>
+
+    <div id="pdf-content" class="space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="card flex flex-col items-center justify-center py-8" id="scoreCard">
+                <div class="score-ring">
+                    <svg viewBox="0 0 220 220">
+                        <circle class="bg-c" cx="110" cy="110" r="96"/>
+                        <circle id="scoreCircle" class="fg-c" cx="110" cy="110" r="96" stroke-dasharray="603.19" stroke-dashoffset="603.19"/>
+                    </svg>
+                    <div class="score-value">
+                        <span id="scoreNum" class="score-number">0</span>
+                        <span class="text-xs text-gray-500">ציון איכות</span>
+                    </div>
+                </div>
+                <div id="buyTag" class="mt-4"></div>
+            </div>
+
+            <div class="card lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-6 content-center">
+                <div><p class="metric-label">מחיר</p><p id="valPrice" class="text-2xl font-bold font-m">--</p></div>
+                <div><p class="metric-label">מכפיל P/E</p><p id="valPe" class="text-2xl font-bold font-m">--</p></div>
+                <div><p class="metric-label">ROE</p><p id="valRoe" class="text-2xl font-bold font-m text-green-400">--</p></div>
+                <div><p class="metric-label">דיבידנד</p><p id="valDiv" class="text-2xl font-bold font-m">--</p></div>
+                <div class="pt-4 border-t border-gray-800"><p class="metric-label">PEG Ratio</p><p id="valPeg" class="font-m">--</p></div>
+                <div class="pt-4 border-t border-gray-800"><p class="metric-label">שווי שוק</p><p id="valCap" class="font-m">--</p></div>
+                <div class="pt-4 border-t border-gray-800"><p class="metric-label">מכפיל הון</p><p id="valPb" class="font-m">--</p></div>
+                <div class="pt-4 border-t border-gray-800"><p class="metric-label">FCF/Income</p><p id="valFcf" class="font-m">--</p></div>
+            </div>
+        </div>
+
+        <div class="card border-r-4 border-gold bg-gradient-to-l from-gold/5 to-transparent">
+            <h3 class="text-gold font-bold mb-4 flex items-center gap-2 text-xl"><span>🔍</span> ניתוח אנליסט מעמיק</h3>
+            <div id="aiSummary" class="text-gray-200 leading-relaxed text-lg mb-6 p-4 bg-black/40 rounded-xl italic"></div>
+            
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-green-500/5 p-4 rounded-xl border border-green-500/10">
+                    <h4 class="text-green-400 font-bold mb-3 flex items-center gap-2">✅ חוזקות המנייה</h4>
+                    <ul id="aiPros" class="space-y-2"></ul>
+                </div>
+                <div class="bg-red-500/5 p-4 rounded-xl border border-red-500/10">
+                    <h4 class="text-red-400 font-bold mb-3 flex items-center gap-2">⚠️ חולשות וסיכונים</h4>
+                    <ul id="aiCons" class="space-y-2"></ul>
+                </div>
+            </div>
+        </div>
     </div>
-    <div id="portfolioRefreshing" class="hidden card text-center py-12"><div class="spinner mx-auto mb-4"></div><p style="color:var(--txt3)">סורק נתונים עדכניים...</p></div>
   </div>
 </main>
 
-<footer class="mt-12 py-6 text-center text-xs" style="border-top:1px solid var(--s300);color:var(--txt3)">
-  <p>FundaVest — ניתוח פונדמנטלי בלבד · מקור נתונים: Alpha Vantage · אין באמור המלצה לקנייה או מכירה &copy; 2026</p>
-</footer>
-
 <script>
-/* ==============================================================
-   ALPHA VANTAGE CONFIG
-   ============================================================== */
-var AV_DEFAULT_KEY = "9A72O2F5PF9CSLER";
-var AV_BASE = "https://www.alphavantage.co/query";
+// מפתח ברירת מחדל ל-AV
+const AV_DEFAULT = "9A72O2F5PF9CSLER";
 
-function getAvKey() {
-  var custom = (localStorage.getItem("fundavest_avkey") || "").trim();
-  return custom.length > 5 ? custom : AV_DEFAULT_KEY;
+function saveKeys() {
+    localStorage.setItem('fv_ant', document.getElementById('apiKeyInput').value.trim());
+    localStorage.setItem('fv_av', document.getElementById('avKeyInput').value.trim() || AV_DEFAULT);
+    alert("המפתחות נשמרו בדפדפן!");
 }
 
-var currentAnalysis = null;
+window.onload = () => {
+    document.getElementById('apiKeyInput').value = localStorage.getItem('fv_ant') || "";
+    document.getElementById('avKeyInput').value = localStorage.getItem('fv_av') || AV_DEFAULT;
+};
 
-/* ==============================================================
-   UTILS
-   ============================================================== */
-function $(id) { return document.getElementById(id); }
-function fmt(n, d) { d = d === undefined ? 2 : d; if (n == null || isNaN(n)) return "—"; return Number(n).toFixed(d); }
-function fmtPct(n) { if (n == null || isNaN(n)) return "—"; return (Number(n) * 100).toFixed(1) + "%"; }
-function fmtPctRaw(n) { if (n == null || isNaN(n)) return "—"; return Number(n).toFixed(2) + "%"; }
-function fmtB(n) {
-  if (n == null || isNaN(n)) return "—"; n = Number(n);
-  if (Math.abs(n) >= 1e12) return (n/1e12).toFixed(1)+"T";
-  if (Math.abs(n) >= 1e9) return (n/1e9).toFixed(1)+"B";
-  if (Math.abs(n) >= 1e6) return (n/1e6).toFixed(1)+"M";
-  if (Math.abs(n) >= 1e3) return (n/1e3).toFixed(1)+"K";
-  return n.toFixed(0);
-}
-function num(v) { var n = parseFloat(v); return isNaN(n) ? null : n; }
-
-/* ==============================================================
-   LOCALSTORAGE
-   ============================================================== */
-function getPortfolio() { try { return JSON.parse(localStorage.getItem("fundavest_portfolio")||"[]"); } catch(e) { return []; } }
-function setPortfolio(p) { localStorage.setItem("fundavest_portfolio", JSON.stringify(p)); }
-function getAnthropicKey() { return localStorage.getItem("fundavest_apikey") || ""; }
-
-function saveAnthropicKey() {
-  var k = $("apiKeyInput").value.trim();
-  if (k) { localStorage.setItem("fundavest_apikey", k); $("apiKeyInput").value=""; $("apiKeyInput").placeholder="✓ נשמר"; setTimeout(function(){ $("apiKeyInput").placeholder="Anthropic API Key"; },2000); }
-}
-function saveAvKey() {
-  var k = $("avKeyInput").value.trim();
-  if (k) { localStorage.setItem("fundavest_avkey", k); $("avKeyInput").value=""; $("avKeyInput").placeholder="✓ AV Key נשמר"; setTimeout(function(){ $("avKeyInput").placeholder="Alpha Vantage Key (אופציונלי)"; },2000); }
-  else { localStorage.removeItem("fundavest_avkey"); $("avKeyInput").placeholder="משתמש במפתח ברירת מחדל"; setTimeout(function(){ $("avKeyInput").placeholder="Alpha Vantage Key (אופציונלי)"; },2000); }
-}
-
-window.addEventListener("DOMContentLoaded", function() {
-  if (getAnthropicKey()) $("apiKeyInput").placeholder = "✓ מפתח Anthropic שמור";
-  if ((localStorage.getItem("fundavest_avkey")||"").trim()) $("avKeyInput").placeholder = "✓ AV Key מותאם שמור";
-  renderPortfolio();
-});
-
-function switchTab(tab, btn) {
-  document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.remove("active"); });
-  btn.classList.add("active");
-  $("tab-analysis").classList.toggle("hidden", tab !== "analysis");
-  $("tab-portfolio").classList.toggle("hidden", tab !== "portfolio");
-  if (tab === "portfolio") renderPortfolio();
-}
-
-/* ==============================================================
-   ALPHA VANTAGE FETCH
-   ============================================================== */
-async function avFetch(func, symbol, extra) {
-  var url = AV_BASE + "?function=" + func + "&symbol=" + symbol + "&apikey=" + getAvKey();
-  if (extra) url += "&" + extra;
-  console.log("[AV Request]", func, "→", url.replace(getAvKey(), "****"));
-
-  var res;
-  try { res = await fetch(url); }
-  catch(e) { console.error("[AV Network]", e); throw new Error("שגיאת רשת: לא ניתן להתחבר ל-Alpha Vantage"); }
-
-  if (!res.ok) throw new Error("שגיאת שרת Alpha Vantage: " + res.status);
-  var data = await res.json();
-
-  /* Check for AV error messages */
-  if (data["Error Message"]) { console.error("[AV Error]", data["Error Message"]); throw new Error("AV_ERROR: " + data["Error Message"]); }
-  if (data["Note"]) { console.warn("[AV Rate Limit]", data["Note"]); throw new Error("AV_RATE_LIMIT"); }
-  if (data["Information"]) {
-    if (data["Information"].indexOf("rate limit") !== -1 || data["Information"].indexOf("API call volume") !== -1) {
-      throw new Error("AV_RATE_LIMIT");
-    }
-  }
-
-  console.log("[AV OK]", func, "→ keys:", Object.keys(data).join(", "));
-  return data;
-}
-
-async function fetchAllData(ticker) {
-  var key = getAvKey();
-  console.log("=== Alpha Vantage fetch for", ticker, "===");
-  console.log("  Key:", key.substring(0,4) + "****");
-
-  /* Fetch OVERVIEW, GLOBAL_QUOTE and CASH_FLOW in parallel */
-  var results = await Promise.all([
-    avFetch("OVERVIEW", ticker).catch(function(e) { console.warn("[AV skip] OVERVIEW:", e.message); return {}; }),
-    avFetch("GLOBAL_QUOTE", ticker).catch(function(e) { console.warn("[AV skip] GLOBAL_QUOTE:", e.message); return {}; }),
-    avFetch("CASH_FLOW", ticker).catch(function(e) { console.warn("[AV skip] CASH_FLOW:", e.message); return {}; })
-  ]);
-
-  var overview = results[0] || {};
-  var gq = (results[1] && results[1]["Global Quote"]) ? results[1]["Global Quote"] : {};
-  var cfRaw = results[2] || {};
-  var cfAnnual = (cfRaw.annualReports && cfRaw.annualReports.length) ? cfRaw.annualReports[0] : {};
-  var cfPrev = (cfRaw.annualReports && cfRaw.annualReports.length > 1) ? cfRaw.annualReports[1] : {};
-
-  /* Map Alpha Vantage fields to our unified data model */
-  var price = num(gq["05. price"]);
-  var prevClose = num(gq["08. previous close"]);
-  var changeAbs = num(gq["09. change"]);
-  var changePct = num((gq["10. change percent"]||"").replace("%",""));
-
-  var data = {
-    quote: {
-      name: overview.Name || ticker,
-      price: price,
-      previousClose: prevClose,
-      change: changeAbs,
-      changesPercentage: changePct,
-      marketCap: num(overview.MarketCapitalization),
-      volume: num(gq["06. volume"]),
-      yearLow: num(overview["52WeekLow"]),
-      yearHigh: num(overview["52WeekHigh"]),
-      beta: num(overview.Beta),
-      pe: num(overview.PERatio),
-      eps: num(overview.EPS)
-    },
-    overview: {
-      pe: num(overview.PERatio),
-      evToEbitda: num(overview.EVToEBITDA),
-      roe: num(overview.ReturnOnEquityTTM),
-      roa: num(overview.ReturnOnAssetsTTM),
-      dividendYield: num(overview.DividendYield),
-      debtToEquity: null, /* Computed from cash flow / balance */
-      bookValue: num(overview.BookValue),
-      priceToBook: num(overview.PriceToBookRatio),
-      epsGrowth: num(overview.QuarterlyEarningsGrowthYOY),
-      revenueGrowth: num(overview.QuarterlyRevenueGrowthYOY),
-      profitMargin: num(overview.ProfitMargin),
-      operatingMargin: num(overview.OperatingMarginTTM),
-      analystTargetPrice: num(overview.AnalystTargetPrice),
-      forwardPE: num(overview.ForwardPE),
-      pegRatio: num(overview.PEGRatio),
-      sharesOutstanding: num(overview.SharesOutstanding)
-    },
-    cashflow: {
-      operatingCashflow: num(cfAnnual.operatingCashflow),
-      capitalExpenditures: num(cfAnnual.capitalExpenditures),
-      netIncome: num(cfAnnual.netIncome),
-      freeCashFlow: null, /* Computed below */
-      prevOperatingCF: num(cfPrev.operatingCashflow),
-      prevCapex: num(cfPrev.capitalExpenditures)
-    },
-    _raw: { overview: overview, globalQuote: gq, cashflow: cfRaw }
-  };
-
-  /* Compute FCF = Operating CF - |CapEx| */
-  if (data.cashflow.operatingCashflow != null && data.cashflow.capitalExpenditures != null) {
-    data.cashflow.freeCashFlow = data.cashflow.operatingCashflow - Math.abs(data.cashflow.capitalExpenditures);
-  }
-
-  console.log("=== Data summary ===", {
-    hasPrice: !!data.quote.price,
-    hasOverview: !!overview.Name,
-    hasCashflow: !!data.cashflow.operatingCashflow,
-    beta: data.quote.beta,
-    pe: data.overview.pe,
-    marketCap: data.quote.marketCap
-  });
-
-  return data;
-}
-
-/* ==============================================================
-   UI STATES
-   ============================================================== */
-function showLoading(text, sub) {
-  $("loadingState").classList.remove("hidden"); $("loadingState").classList.add("flex");
-  $("loadingText").textContent = text; $("loadingSub").textContent = sub || "";
-  $("emptyState").classList.add("hidden"); $("errorState").classList.add("hidden"); $("resultsArea").classList.add("hidden");
-}
-function hideLoading() { $("loadingState").classList.add("hidden"); $("loadingState").classList.remove("flex"); }
-function showError(msg) { hideLoading(); $("errorState").classList.remove("hidden"); $("errorMessage").textContent = msg; $("emptyState").classList.add("hidden"); $("resultsArea").classList.add("hidden"); }
-function showResults() { hideLoading(); $("resultsArea").classList.remove("hidden"); $("emptyState").classList.add("hidden"); $("errorState").classList.add("hidden"); }
-
-/* ==============================================================
-   MAIN ANALYSIS
-   ============================================================== */
 async function analyzeStock() {
-  var ticker = $("tickerInput").value.trim().toUpperCase();
-  if (!ticker) return;
-  var anthropicKey = getAnthropicKey();
-  if (!anthropicKey) { showError("יש להזין Anthropic API Key בשורת הכותרת ולשמור אותו."); return; }
+    const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+    const antKey = localStorage.getItem('fv_ant');
+    const avKey = localStorage.getItem('fv_av') || AV_DEFAULT;
 
-  try {
-    showLoading("טוען נתונים מ-Alpha Vantage...", "OVERVIEW + GLOBAL_QUOTE + CASH_FLOW");
-    var data = await fetchAllData(ticker);
-    if (!data.quote.price) { showError("לא נמצאו נתונים עבור " + ticker + ". ודא שהסימול תקין."); return; }
+    if (!ticker || !antKey) return alert("אנא הזן סימול ומפתח Anthropic");
 
-    showLoading("🤖 שולח נתונים לניתוח AI...", "מעבד " + ticker + " עם Claude");
-    var aiResult = await callClaudeAnalysis(data, ticker, anthropicKey);
-    renderResults(data, aiResult, ticker);
-    showResults();
-  } catch (err) {
-    console.error("[analyzeStock]", err);
-    if (err.message === "AV_RATE_LIMIT") {
-      showError("⏱ הגעת למגבלת הקריאות של Alpha Vantage. המתן דקה ונסה שוב, או הזן מפתח Premium.");
-    } else if (err.message.indexOf("AV_ERROR") === 0) {
-      showError("🔑 שגיאת Alpha Vantage: " + err.message.replace("AV_ERROR: ",""));
-    } else {
-      showError("שגיאה: " + err.message);
+    document.getElementById('loading').classList.remove('hidden');
+    document.getElementById('resultsArea').classList.add('hidden');
+
+    try {
+        // משיכת נתונים מ-Alpha Vantage
+        const ovRes = await fetch(`https://www.alphavantage.co/query?function=OVERVIEW&symbol=${ticker}&apikey=${avKey}`);
+        const ov = await ovRes.json();
+        if (ov.Note) throw new Error("מגבלת API של Alpha Vantage (5 בדקה). המתן דקה.");
+        if (!ov.Symbol) throw new Error("מניה לא נמצאה.");
+
+        const qRes = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${avKey}`);
+        const qData = await qRes.json();
+        const quote = qData["Global Quote"] || {};
+
+        const cfRes = await fetch(`https://www.alphavantage.co/query?function=CASH_FLOW&symbol=${ticker}&apikey=${avKey}`);
+        const cfData = await cfRes.json();
+        const cf = cfData.annualReports?.[0] || {};
+
+        // חישוב יחס FCF/Income
+        const fcfRatio = (cf.operatingCashflow && cf.netIncome) ? (parseFloat(cf.operatingCashflow) / parseFloat(cf.netIncome)).toFixed(2) : "N/A";
+
+        // עדכון UI נתונים יבשים
+        document.getElementById('compName').innerText = ov.Name;
+        document.getElementById('compTicker').innerText = ov.Symbol;
+        document.getElementById('valPrice').innerText = "$" + parseFloat(quote["05. price"] || 0).toFixed(2);
+        document.getElementById('valPe').innerText = ov.PERatio || "N/A";
+        document.getElementById('valRoe').innerText = (parseFloat(ov.ReturnOnEquityTTM || 0) * 100).toFixed(1) + "%";
+        document.getElementById('valDiv').innerText = (parseFloat(ov.DividendYield || 0) * 100).toFixed(1) + "%";
+        document.getElementById('valPeg').innerText = ov.PEGRatio || "N/A";
+        document.getElementById('valPb').innerText = ov.PriceToBookRatio || "N/A";
+        document.getElementById('valCap').innerText = "$" + (parseFloat(ov.MarketCapitalization)/1e9).toFixed(2) + "B";
+        document.getElementById('valFcf').innerText = fcfRatio + "x";
+
+        // ניתוח AI
+        document.getElementById('loadingMsg').innerText = "קלוד (האנליסט) בודק את הדוחות הפיננסיים...";
+        const ai = await callClaude(ov, quote, fcfRatio, antKey);
+        
+        renderAI(ai);
+
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('resultsArea').classList.remove('hidden');
+
+    } catch (e) {
+        alert(e.message);
+        document.getElementById('loading').classList.add('hidden');
     }
-  }
 }
 
-/* ==============================================================
-   CLAUDE AI ANALYSIS
-   ============================================================== */
-async function callClaudeAnalysis(data, ticker, apiKey) {
-  var q = data.quote, ov = data.overview, cf = data.cashflow;
+async function callClaude(ov, quote, fcf, key) {
+    const prompt = `You are a professional equity analyst. Analyze ${ov.Symbol} (${ov.Name}).
+    Fundamentals: P/E: ${ov.PERatio}, PEG: ${ov.PEGRatio}, ROE: ${ov.ReturnOnEquityTTM}, 
+    Profit Margin: ${ov.ProfitMargin}, DebtToEquity: ${ov.DebtToEquityRatio}, 
+    FCF/NetIncome Ratio: ${fcf}, PriceToBook: ${ov.PriceToBookRatio}.
+    Scoring Rules: ROE > 15% is good. PEG < 1 is undervalued. FCF/NI > 0.8 is high earnings quality.
+    Return ONLY JSON:
+    {"score":0-100, "summary":"Hebrew analysis (4-5 sentences)", "pros":["Hebrew point"],"cons":["Hebrew point"],"buy":true/false}`;
 
-  var prompt = "You are a senior fundamental equity analyst. Analyze the following Alpha Vantage data for " + ticker + " and return ONLY valid JSON (no markdown, no backticks).\n\n" +
-    "QUOTE DATA:\n" +
-    "- Price: $" + q.price + ", Market Cap: $" + q.marketCap + "\n" +
-    "- Change: " + q.changesPercentage + "%, Volume: " + q.volume + "\n" +
-    "- 52-Week Range: $" + q.yearLow + " - $" + q.yearHigh + "\n" +
-    "- Beta: " + (q.beta || "N/A") + ", EPS: $" + q.eps + "\n\n" +
-    "FUNDAMENTALS (OVERVIEW):\n" +
-    "- P/E Ratio: " + ov.pe + ", Forward P/E: " + ov.forwardPE + ", PEG: " + ov.pegRatio + "\n" +
-    "- EV/EBITDA: " + ov.evToEbitda + "\n" +
-    "- ROE: " + ov.roe + ", ROA: " + ov.roa + "\n" +
-    "- Profit Margin: " + ov.profitMargin + ", Operating Margin: " + ov.operatingMargin + "\n" +
-    "- Book Value/Share: $" + ov.bookValue + ", Price/Book: " + ov.priceToBook + "\n" +
-    "- Dividend Yield: " + ov.dividendYield + "\n" +
-    "- Quarterly EPS Growth YOY: " + ov.epsGrowth + "\n" +
-    "- Quarterly Revenue Growth YOY: " + ov.revenueGrowth + "\n" +
-    "- Analyst Target Price: $" + ov.analystTargetPrice + "\n\n" +
-    "CASH FLOW (Latest Annual):\n" +
-    "- Operating Cash Flow: $" + cf.operatingCashflow + "\n" +
-    "- Capital Expenditures: $" + cf.capitalExpenditures + "\n" +
-    "- Free Cash Flow (computed): $" + cf.freeCashFlow + "\n" +
-    "- Net Income: $" + cf.netIncome + "\n\n" +
-    "SCORING CRITERIA (0-100):\n" +
-    "1. Financial Strength (25%): Low debt preferred. Current ratio, profit margins.\n" +
-    "2. Earnings Quality (25%): FCF/NetIncome > 0.8 excellent. Consistent margins.\n" +
-    "3. Valuation & Growth (30%): Price vs Analyst Target & Book Value. EPS growth > 10%.\n" +
-    "4. Risk/Beta (20%): Lower beta = higher score. Beta < 1 preferred.\n\n" +
-    "Rule: Score >= 80 = BUY. < 80 = NO BUY.\n" +
-    "Position sizing: Max 10% based on score + beta.\n\n" +
-    "Return ONLY this JSON:\n" +
-    '{"score":<0-100>,"buy_signal":<bool>,"position_pct":<max 10>,"target_price":<num>,"stop_loss":<num>,"risk_reward_ratio":"<1:X>","strengths":["s1","s2","s3"],"weaknesses":["w1","w2"],"summary":"<Hebrew 2-3 sentences>","financial_health":"<Hebrew 1-2 sentences>","valuation_note":"<Hebrew 1-2 sentences>","recommendation":"<BUY/AVOID/HOLD/EXIT>"}';
-
-  var response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type":"application/json", "x-api-key":apiKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
-    body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1500, messages:[{role:"user",content:prompt}] })
-  });
-
-  if (!response.ok) { var e={}; try{e=await response.json();}catch(x){} throw new Error("Claude API: "+(e.error?e.error.message:"סטטוס "+response.status)); }
-  var result = await response.json();
-  var text = ""; if(result.content) for(var i=0;i<result.content.length;i++) if(result.content[i].text) text+=result.content[i].text;
-  try { return JSON.parse(text.replace(/```json|```/g,"").trim()); }
-  catch(e) { console.error("[AI Parse]", text); throw new Error("לא הצליח לפרסר תשובת AI. נסה שוב."); }
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+            "anthropic-dangerous-direct-browser-access": "true"
+        },
+        body: JSON.stringify({
+            model: "claude-3-sonnet-20240229",
+            max_tokens: 1000,
+            messages: [{role: "user", content: prompt}]
+        })
+    });
+    
+    const json = await res.json();
+    if (!json.content || !json.content[0]) throw new Error("שגיאה בתקשורת עם ה-AI");
+    
+    let text = json.content[0].text;
+    return JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
 }
 
-/* ==============================================================
-   RENDER RESULTS
-   ============================================================== */
-function renderResults(data, ai, ticker) {
-  var q = data.quote, ov = data.overview, cf = data.cashflow;
-  currentAnalysis = { ticker:ticker, data:data, ai:ai, date:new Date().toISOString() };
+function renderAI(ai) {
+    document.getElementById('scoreNum').innerText = ai.score;
+    const offset = 603.19 - (ai.score / 100) * 603.19;
+    document.getElementById('scoreCircle').style.strokeDashoffset = offset;
+    
+    // צבע הציון
+    const color = ai.score >= 80 ? "#22c55e" : ai.score >= 50 ? "#d4a853" : "#ef4444";
+    document.getElementById('scoreCircle').style.stroke = color;
+    document.getElementById('scoreNum').style.color = color;
 
-  $("companyName").textContent = q.name || ticker;
-  $("companyTicker").textContent = ticker;
-  $("currentPrice").textContent = "$" + fmt(q.price);
-  $("priceChange").textContent = (q.changesPercentage >= 0 ? "+" : "") + fmt(q.changesPercentage) + "%";
-  $("priceChange").style.color = q.changesPercentage >= 0 ? "var(--grn)" : "var(--red)";
-
-  $("mktCap").textContent = "$" + fmtB(q.marketCap);
-  $("volume").textContent = fmtB(q.volume);
-  $("range52").textContent = "$" + fmt(q.yearLow,0) + " - $" + fmt(q.yearHigh,0);
-  $("betaVal").textContent = fmt(q.beta, 2);
-  $("peRatio").textContent = fmt(ov.pe);
-  $("evEbitda").textContent = fmt(ov.evToEbitda);
-  $("roe").textContent = ov.roe != null ? fmtPctRaw(ov.roe * 100) : "—";
-  $("divYield").textContent = ov.dividendYield != null ? fmtPctRaw(ov.dividendYield * 100) : "—";
-
-  /* Metrics cards */
-  /* D/E — not directly in AV OVERVIEW, use Price/Book as proxy indicator */
-  $("deRatio").textContent = fmt(ov.priceToBook);
-  $("deRatio").style.color = ov.priceToBook != null && ov.priceToBook < 3 ? "var(--grn)" : "var(--gold)";
-  $("deStatus").textContent = ov.priceToBook != null ? (ov.priceToBook < 1.5 ? "✓ מתחת לספר" : ov.priceToBook < 3 ? "סביר" : "⚠ גבוה") : "—";
-
-  /* Book Value vs Price */
-  $("dcfValue").textContent = "$" + fmt(ov.bookValue);
-  if (ov.bookValue && q.price) {
-    var bvMargin = ((ov.bookValue - q.price) / q.price * 100);
-    $("dcfMargin").textContent = bvMargin > 0 ? "מתחת לערך הספר ב-" + fmt(Math.abs(bvMargin),0) + "%" : "מעל ערך הספר ב-" + fmt(Math.abs(bvMargin),0) + "%";
-    $("dcfMargin").style.color = bvMargin > 0 ? "var(--grn)" : "var(--gold)";
-  }
-
-  /* EPS Growth */
-  $("epsGrowth").textContent = ov.epsGrowth != null ? fmtPctRaw(ov.epsGrowth * 100) : "—";
-  $("epsGrowth").style.color = ov.epsGrowth != null && ov.epsGrowth > 0.1 ? "var(--grn)" : "var(--red)";
-
-  /* FCF / Net Income */
-  var fcfR = cf.freeCashFlow && cf.netIncome && cf.netIncome !== 0 ? cf.freeCashFlow / cf.netIncome : null;
-  $("fcfRatio").textContent = fcfR != null ? fmt(fcfR) + "x" : "—";
-  $("fcfRatio").style.color = fcfR != null && fcfR > 0.8 ? "var(--grn)" : "var(--gold)";
-  $("fcfStatus").textContent = fcfR != null ? (fcfR > 0.8 ? "✓ איכות רווח גבוהה" : "⚠ פער בין רווח לתזרים") : "—";
-
-  /* Score circle */
-  var score = ai.score || 0;
-  var circ = 2 * Math.PI * 96;
-  $("scoreCircle").style.strokeDashoffset = circ - (score/100)*circ;
-  $("scoreCircle").style.stroke = score >= 80 ? "var(--grn)" : score >= 50 ? "#eab308" : "var(--red)";
-  $("scoreNumber").textContent = score;
-  $("scoreNumber").style.color = score >= 80 ? "var(--grn)" : score >= 50 ? "#eab308" : "var(--red)";
-  $("scoreCard").className = "card flex flex-col items-center justify-center py-8 " + (score >= 80 ? "glow-green" : score >= 50 ? "glow-gold" : "glow-red");
-
-  $("buySignal").innerHTML = ai.buy_signal
-    ? '<span class="buy-badge buy-yes"><svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg> אישור קנייה</span>'
-    : '<span class="buy-badge buy-no">✗ לא עומד בקריטריונים</span>';
-  $("positionSize").textContent = "הקצאה מומלצת: " + (ai.position_pct||0) + "% מהתיק";
-  $("targetPrice").textContent = "$" + fmt(ai.target_price);
-  $("stopLoss").textContent = "$" + fmt(ai.stop_loss);
-  $("riskReward").textContent = ai.risk_reward_ratio || "—";
-
-  /* AI analysis HTML */
-  var h = "";
-  if (ai.summary) h += '<div class="card" style="background:var(--s50);border-color:var(--s300)"><p style="color:var(--txt)" class="font-medium">' + ai.summary + "</p></div>";
-  if (ai.financial_health) h += '<div><h4 class="font-bold text-sm mb-1" style="color:var(--gold)">💰 חוסן פיננסי</h4><p>' + ai.financial_health + "</p></div>";
-  if (ai.valuation_note) h += '<div><h4 class="font-bold text-sm mb-1" style="color:var(--cyan)">📐 תמחור</h4><p>' + ai.valuation_note + "</p></div>";
-  if (ai.strengths && ai.strengths.length) { h += '<div><h4 class="font-bold text-sm mb-2" style="color:var(--grn)">✅ חוזקות</h4><div class="flex flex-wrap gap-2">'; for(var i=0;i<ai.strengths.length;i++) h+='<span class="chip-grn">'+ai.strengths[i]+"</span>"; h+="</div></div>"; }
-  if (ai.weaknesses && ai.weaknesses.length) { h += '<div><h4 class="font-bold text-sm mb-2" style="color:var(--red)">⚠️ חולשות</h4><div class="flex flex-wrap gap-2">'; for(var i=0;i<ai.weaknesses.length;i++) h+='<span class="chip-red">'+ai.weaknesses[i]+"</span>"; h+="</div></div>"; }
-  $("aiAnalysis").innerHTML = h;
-
-  /* Alerts */
-  var alerts = "";
-  var dollarVol = (q.volume||0) * (q.price||0);
-  if (dollarVol < 500000 && q.volume) alerts += '<div class="alert-banner alert-warn">⚠️ אזהרת סחירות: מחזור יומי ' + fmtB(dollarVol) + '$ — נמוך מ-500K$</div>';
-  $("alertsRow").innerHTML = alerts;
+    document.getElementById('aiSummary').innerText = ai.summary;
+    document.getElementById('aiPros').innerHTML = ai.pros.map(p => `<li class="flex items-start gap-2 text-sm"><span>✅</span>${p}</li>`).join('');
+    document.getElementById('aiCons').innerHTML = ai.cons.map(c => `<li class="flex items-start gap-2 text-sm"><span>⚠️</span>${c}</li>`).join('');
+    
+    document.getElementById('buyTag').innerHTML = ai.buy 
+        ? '<div class="buy-badge buy-yes">✓ אישור קנייה - פונדמנטלי חזק</div>' 
+        : '<div class="buy-badge buy-no">✗ לא עומד בקריטריונים כרגע</div>';
 }
 
-/* ==============================================================
-   PORTFOLIO
-   ============================================================== */
-function markAsBought() {
-  if (!currentAnalysis) return;
-  var portfolio = getPortfolio();
-  for (var i=0;i<portfolio.length;i++) { if (portfolio[i].ticker===currentAnalysis.ticker) { alert(currentAnalysis.ticker+" כבר קיים בתיק!"); return; } }
-  portfolio.push({ ticker:currentAnalysis.ticker, buyPrice:currentAnalysis.data.quote.price, score:currentAnalysis.ai.score, target:currentAnalysis.ai.target_price, stopLoss:currentAnalysis.ai.stop_loss, positionPct:currentAnalysis.ai.position_pct, recommendation:"HOLD", date:new Date().toLocaleDateString("he-IL"), lastUpdate:null, currentPrice:currentAnalysis.data.quote.price });
-  setPortfolio(portfolio);
-  alert("✓ "+currentAnalysis.ticker+" נוסף לתיק ההשקעות!");
-}
-
-function renderPortfolio() {
-  var portfolio = getPortfolio();
-  if (portfolio.length===0) { $("portfolioEmpty").classList.remove("hidden"); $("portfolioTable").classList.add("hidden"); return; }
-  $("portfolioEmpty").classList.add("hidden"); $("portfolioTable").classList.remove("hidden");
-  var html = "";
-  for (var i=0;i<portfolio.length;i++) {
-    var p = portfolio[i];
-    var ret = p.currentPrice && p.buyPrice ? ((p.currentPrice-p.buyPrice)/p.buyPrice*100) : 0;
-    var retC = ret>=0?"var(--grn)":"var(--red)";
-    var recC = p.recommendation==="HOLD"?"var(--grn)":p.recommendation==="EXIT"?"var(--red)":"var(--gold)";
-    html += '<tr><td class="font-m font-bold" style="color:var(--gold)">'+p.ticker+'</td><td class="font-m">$'+fmt(p.buyPrice)+'</td><td class="font-m">$'+fmt(p.currentPrice)+'</td><td class="font-m" style="color:'+retC+'">'+(ret>=0?"+":"")+fmt(ret)+'%</td><td class="font-m">'+p.score+'</td><td class="font-bold" style="color:'+recC+'">'+p.recommendation+'</td><td class="text-sm" style="color:var(--txt3)">'+p.date+'</td><td><button onclick="removeFromPortfolio('+i+')" class="btn btn-outline text-xs py-1 px-2" style="color:var(--red);border-color:rgba(239,68,68,.2)">🗑</button></td></tr>';
-  }
-  $("portfolioBody").innerHTML = html;
-}
-
-function removeFromPortfolio(idx) {
-  if (!confirm("להסיר מניה זו מהתיק?")) return;
-  var p=getPortfolio(); p.splice(idx,1); setPortfolio(p); renderPortfolio();
-}
-
-async function refreshPortfolio() {
-  var anthropicKey = getAnthropicKey();
-  if (!anthropicKey) { alert("יש להזין Anthropic API Key."); return; }
-  var portfolio = getPortfolio();
-  if (portfolio.length===0) return;
-  $("portfolioTable").classList.add("hidden"); $("portfolioRefreshing").classList.remove("hidden");
-  try {
-    for (var i=0;i<portfolio.length;i++) {
-      var p = portfolio[i];
-      try {
-        var data = await fetchAllData(p.ticker);
-        var ai = await callClaudeAnalysis(data, p.ticker, anthropicKey);
-        p.currentPrice = data.quote.price; p.score = ai.score;
-        p.recommendation = ai.score>=60 ? "HOLD" : "EXIT";
-        p.target = ai.target_price; p.stopLoss = ai.stop_loss;
-        p.lastUpdate = new Date().toLocaleDateString("he-IL");
-        if (p.currentPrice && p.stopLoss && p.currentPrice < p.stopLoss) p.recommendation = "EXIT";
-      } catch(err) { console.error("Error refreshing "+p.ticker, err); p.recommendation = "CHECK"; }
-    }
-    setPortfolio(portfolio); $("portfolioRefreshing").classList.add("hidden"); renderPortfolio();
-  } catch(err) { $("portfolioRefreshing").classList.add("hidden"); $("portfolioTable").classList.remove("hidden"); alert("שגיאה בעדכון: "+err.message); }
-}
-
-/* ==============================================================
-   EXPORT / IMPORT
-   ============================================================== */
-function exportCSV() {
-  var portfolio = getPortfolio();
-  if (portfolio.length===0) { alert("התיק ריק."); return; }
-  var csv="Ticker,Buy Price,Current Price,Return %,Score,Recommendation,Date\n";
-  for(var i=0;i<portfolio.length;i++){var p=portfolio[i];var ret=p.currentPrice&&p.buyPrice?((p.currentPrice-p.buyPrice)/p.buyPrice*100).toFixed(2):0;csv+=p.ticker+","+p.buyPrice+","+p.currentPrice+","+ret+","+p.score+","+p.recommendation+","+p.date+"\n";}
-  var blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"});
-  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="fundavest_portfolio_"+new Date().toISOString().slice(0,10)+".csv";a.click();
-}
-function exportBackup() {
-  var backup={portfolio:getPortfolio(),apiKey:getAnthropicKey(),avKey:getAvKey(),exportDate:new Date().toISOString(),version:"2.0"};
-  var blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
-  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="fundavest_backup_"+new Date().toISOString().slice(0,10)+".json";a.click();
-}
-function importBackup(){$("importFile").click();}
-function handleImport(event){
-  var file=event.target.files[0];if(!file)return;
-  var reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      var backup=JSON.parse(e.target.result);
-      if(backup.portfolio){setPortfolio(backup.portfolio);renderPortfolio();}
-      if(backup.apiKey){localStorage.setItem("fundavest_apikey",backup.apiKey);$("apiKeyInput").placeholder="✓ מפתח שוחזר";}
-      if(backup.avKey){localStorage.setItem("fundavest_avkey",backup.avKey);$("avKeyInput").placeholder="✓ AV Key שוחזר";}
-      alert("✓ גיבוי יובא בהצלחה!");
-    }catch(ex){alert("שגיאה בקריאת קובץ הגיבוי.");}
-  };
-  reader.readAsText(file);event.target.value="";
+function exportToPDF() {
+    const element = document.getElementById('resultsArea');
+    const ticker = document.getElementById('compTicker').innerText;
+    const opt = {
+        margin: 10,
+        filename: `FundaVest_Analysis_${ticker}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, backgroundColor: '#0a0a0f', useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
 }
 </script>
 </body>
